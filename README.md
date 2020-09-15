@@ -1,2 +1,2 @@
 # ssvht
-A set of scripts to call somatic structural variants
+A set of scripts to assist the  calling of somatic structural variants from short-reads.
