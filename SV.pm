@@ -20,6 +20,7 @@ use SVE;
 use DELLY;
 use Manta;
 use SVaba;
+use SURVIVOR;
 
 sub new{
   my ($packagename, $vcf) = @_;
@@ -29,15 +30,20 @@ sub new{
 }
 
 
+
 sub _get_autosomes_X_numbers{
-  my @chrs=("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","X");
+  my @chrs=("1","2","3","4","5","6","7",
+            "8","9","10","11","12","13",
+            "14","15","16","17","18","19",
+            "20","21","22","X");
   return @chrs;
 }
 
 sub _get_autosomes_X_chr{
   my @chrs=("chr1","chr2","chr3","chr4","chr5","chr6","chr7",
-  "chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15",
-  "chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX");
+            "chr8","chr9","chr10","chr11","chr12","chr13",
+            "chr14","chr15","chr16","chr17","chr18","chr19",
+            "chr20","chr21","chr22","chrX");
   return @chrs;
 }
 
@@ -73,6 +79,7 @@ sub _parse_ctg_entry{
 
 sub norm_svs{
       my $self=shift;
+      my $load_geno=shift;
       my $hchr=$self->_get_hash_autosomes_X_chr();
       open(VCF, $self->{vcffile}) or die "cannot open VCF file\n";
       while (my $line=<VCF>) {
@@ -80,9 +87,7 @@ sub norm_svs{
              next;
         }else{
           #we have an entry
-          my $entry= new SVE($line);
-          #next if($entry->{CHR1} eq)
-          #print Dumper($entry);
+          my $entry= new SVE($line,$load_geno);
           push (@{$self->{entries}},$entry);
         }
       }
@@ -91,7 +96,12 @@ sub norm_svs{
       my ($caller)=$self->_guess_caller();
       #add missing values to the entries and merge complex ones
       $caller->normalize_sv($self);
+      #foreach my $item (@{$self->{entries}}){
+      #  print join("\t",$item->{ID},$item->{info}->{PE},$item->{info}->{SR},$item->{info}->{SVTYPE},$item->{info}->{SVLEN})."\n";
+      #}
 }
+
+
 
 
 #function that guest the caller currently expect SVaba, Manta and Delly2
@@ -109,11 +119,14 @@ sub _guess_caller{
      }elsif(defined $item->{info}->{SCTG}){
        #print "SVaba\n";
        $caller="SVaba";
+     }elsif($item->{info}->{SVMETHOD} =~m/SURVIVOR/){
+        $caller="SURVIVOR";
      }else{
        print "Unknow caller\n";
      }
   }
-
+  
+  #we
   my $tool=();
   if($caller eq "DELLY2"){
     $tool = new DELLY();
@@ -123,9 +136,68 @@ sub _guess_caller{
     #$tool->normalize_sv($self);
   }elsif($caller eq "SVaba"){
     $tool = new SVaba();
+  }elsif($caller eq "SURVIVOR"){
+    $tool = new SURVIVOR();
   }
 
   return $tool;
+}
+
+
+sub basic_filters{
+    my $self=shift;
+    my $rsup=shift;
+    my $min_len=shift;
+    my $max_len=shift;
+
+    my $hchr=$self->_get_hash_autosomes_X_chr();
+    my $remove_by_length=0;
+    my $remove_by_chr=0;
+    my $remove_by_readsupport=0;
+    my $total_variants=0;
+    my $alive=0;#pass filter variants
+    my $total=0;#total variants
+
+    #remove variants outside
+    foreach my $item (@{$self->{entries}}){
+      #print Dumper($item);
+      $total++;
+      my $type=$item->{info}->{SVTYPE};
+      #mark the variant as alive
+      $item->{info}->{ALIVE}=1;
+
+      if($type ne "BND"){
+            if(!defined $hchr->{$item->{CHROM}}){
+                    $item->{info}->{ALIVE}=0;
+                    $remove_by_chr++;
+            }
+
+            if($item->{info}->{SVLEN} < $min_len or $item->{info}->{SVLEN} > $max_len){
+                  $remove_by_length++;
+                  $item->{info}->{ALIVE}=0;
+            }
+      }else{
+            if(!defined $hchr->{$item->{CHROM}} or !defined $hchr->{$item->{info}->{CHR2}}){
+                $item->{info}->{ALIVE}=0;
+                $remove_by_chr++;
+            }
+      }
+      #we remove the variants if is supported by less than < $rsup reads
+      if($item->{info}->{PE_SR} < $rsup){
+          $item->{info}->{ALIVE}=0;
+          $remove_by_readsupport++;
+      }
+      $alive++ if($item->{info}->{ALIVE} > 0);
+      #print join("\t",$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{PE},$item->{info}->{SR},$item->{info}->{SVTYPE},$item->{info}->{SVLEN},$item->{info}->{ALIVE})."\n";
+    }
+
+  print "############## BASIC FILTERS START #################\n";
+  print "Total SV       : $total\n";
+  print "Total Alive SV : $alive\n";
+  print "Filter by CHR  : $remove_by_chr\n";
+  print "Filter by Length[$min_len,$max_len]: $remove_by_length\n";
+  print "Filter by support[<$rsup]: $remove_by_readsupport\n";
+  print "############## BASIC FILTERS END #################\n";
 }
 
 

@@ -16,9 +16,9 @@ use strict;
 use Data::Dumper;
 
 sub new{
-  my ($packagename, $line) = @_;
+  my ($packagename, $line, $lgeno) = @_;
   chomp $line;
-  my $self = {el => $line};
+  my $self = {el => $line,lg=>$lgeno};
   bless ($self, $packagename);
   $self->_create_entry();
   return ($self);
@@ -27,10 +27,15 @@ sub new{
 
 sub _create_entry{
       my $self=shift;
+      #my $lgeno=shift;
 
       #parse subparts of the entry
       my $tags=$self->_get_tags();
-      my $geno=$self->_get_geno();
+
+      my $geno;
+      if($self->{lg}){
+        $geno=$self->_get_geno();
+      }
       $self->{info}=$tags;
       $self->{geno}=$geno;
       ##CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  B00JAM1 B00JAM2

@@ -28,9 +28,7 @@ sub normalize_sv{
    my $self=shift;
    my $svobj=shift;
    foreach my $item (@{$svobj->{entries}}){
-     #$item->{info}->{"SVMETHOD"}="DELLY";
-     #print ref($item);
-     #print join("\t",$item->{ID},$item->{POS},$item->{CHR})."\n";
+
      $item->{info}->{SVMETHOD}="DELLY";
      #we ask for PE support
      if(!defined $item->{info}->{PE}){
@@ -41,9 +39,7 @@ sub normalize_sv{
      }
      #total support of the SV
      $item->{info}->{PE_SR}=$item->{info}->{PE}+$item->{info}->{SR};
-
      #we compute the lengh of the SV
-
      my $type=$item->{info}->{SVTYPE};
      if($type eq "DEL" or $type eq "DUP" or $type eq "INV"){
             my $l=abs($item->{POS}-$item->{info}->{END});
@@ -54,10 +50,8 @@ sub normalize_sv{
              $item->{info}->{SVLEN}=0;
      }
 
-     print join("\t",$item->{ID},$item->{info}->{PE},$item->{info}->{SR},$type,$item->{info}->{SVLEN})."\n";
+     #print join("\t",$item->{ID},$item->{info}->{PE},$item->{info}->{SR},$type,$item->{info}->{SVLEN})."\n";
      #print Dumper($item);
-
-
    }
 }
 
