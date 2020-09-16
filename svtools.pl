@@ -37,11 +37,11 @@ my $sva=new SVannot();
 #load the genotype information
 $target->norm_svs(1);
 #remove SVs shorter than 30 bp, matching to alternative chromosomes or with read support lower than 5
-$target->basic_filters(5,30,500000000);
+$target->basic_filters(3,30,500000000);
 #annotate using PANEL of normals
 $pon->norm_svs(0);
 #print Dumper($pon);
-$sva->annot_pon_sv($target,$target);
+$sva->annot_pon_sv($pon,$target);
 #$sv->annotate_pon();
 #annotate GNOMAD
 #$sv->annotate_gnomad();
