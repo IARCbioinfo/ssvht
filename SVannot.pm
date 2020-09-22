@@ -35,14 +35,95 @@ sub annot_pon_sv{
    #we compute the overlaps with the given target calls
    foreach my $item (@{$target->{entries}}){
      my ($brk1,$brk2)=_get_breakpoints($item);
-     my $rbk1=$tree->fetch($brk1->{start}-$delta,$brk1->{stop}-$delta+$delta);
-     print join(" ",$item->{CHROM},$item->{ID},$brk1->{start}-$delta,$brk1->{stop}+$delta,"breakpoint1",scalar(@$rbk1))."\n";
-     #print scalar(@$rbk1);
-     my $rbk2=$tree->fetch($brk2->{start}-$delta,$brk2->{stop}-$delta+$delta);
-     print join(" ",$item->{CHROM},$item->{ID},$brk2->{start}-$delta,$brk2->{stop}+$delta,"breakpoint2",scalar(@$rbk2))."\n";
-     #print scalar(@$rbk2);
+     #add delta to breakpoints
+     my $rb1a=$brk1->{start}-$delta/2;
+     my $rb1b=$brk1->{stop}+$delta/2;
+     #fetch results from the tree
+     my $rbk1=$tree->fetch($rb1a,$rb1b);
+
+     print join(" ",$item->{CHROM},$item->{ID},$rb1a,$rb1b,"breakpoint1",abs($rb1b-$rb1a),scalar(@$rbk1))."\n";
+     #print Dumper(@$rbk1);
+     my $rb2a=$brk2->{start}-$delta/2;
+     my $rb2b=$brk2->{stop}+$delta/2;
+     my $rbk2=$tree->fetch($rb2a,$rb2b);
+     print join(" ",$item->{CHROM},$item->{ID},$rb2a,$rb2b,"breakpoint2",abs($rb2b-$rb2a),scalar(@$rbk2))."\n";
+
+     #DataDumper avoid the printing of equal objects
+     #print Dumper($rbk1);
+     #print Dumper($rbk2);
+     #we filter the breakpoints considering the intervaltree construction, which ignore the chromosome
+     my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
+     _select_results($item,$fr1,$fr2);
+     
    }
 
+}
+
+
+
+sub _select_results{
+   my ($item,$rbk1,$rbk2)=@_;
+   #print join(" ", "count from fucntion",scalar(@$rbk1),scalar(@$rbk2))."\n";
+   my $ac=scalar(@$rbk1);
+   my $bc=scalar(@$rbk2);
+   #print Dumper($rbk1,$rbk2);
+   if($ac==0 and $bc==0){
+     $item->{info}->{PON}=0;#there is no a matching SV on the panel of normals
+     $item->{info}->{PON_IDS}=0;#ids of each matching pon
+     $item->{info}->{PON_TYPE}=0;#type of each matching pon
+     $item->{info}->{PON_SUPP}=0;#number of genomes supporting the PON
+     #print Dumper($item);
+     print join(" ","NO-MATCH",$item->{ID},0,0,0,0)."\n";
+     return;
+   }
+
+   #we have a posible match
+   #$tree->insert({chr=>$item->{CHROM},brk=>1,index=>$i,type=>$item->{info}->{SVTYPE},
+   #               id=>$item->{ID}},$brk1->{start},$brk1->{stop});
+
+   my $jbk=();
+   #first breakpoint
+   foreach my $bp(@{$rbk1}){
+        $jbk->{$bp->{id}}->{$bp->{brk}}++;
+   }
+   #second breakpoint
+   foreach my $bp(@{$rbk2}){
+        $jbk->{$bp->{id}}->{$bp->{brk}}++;
+   }
+
+   print Dumper($jbk);
+}
+
+sub _filter_by_chr{
+    my ($chr,$rbk1)=@_;
+    #we filter the list  of breapoin1 by chr
+    my $f1=[];#array of filtered breakpoints1
+    foreach my $r(@{$rbk1}){
+        if($r->{chr} eq $chr){
+             push(@{$f1},$r);
+          }
+      }
+      return $f1;
+}
+
+#filter breakpoint results by chr, cause of how the interval tree is build
+sub _filter_results_by_chr{
+  my ($item,$rbk1,$rbk2)=@_;
+
+  my $f1=[];#array of filtered breakpoints1
+  my $f2=[]; #array of filtered breakpoint2
+  my $type=$item->{info}->{SVTYPE};
+  my $chr=$item->{CHROM};#chr for breakpoint 1;
+
+  my ($f1)=_filter_by_chr($chr,$rbk1);
+  #we change chr in case of a BND or a TRAN for breakpoint 2
+  if($type eq "BND" and $type eq "TRA"){
+       $chr=$item->{info}->{CHR2};
+  }
+  #we filter the list of breakpoint2 by chr
+  my ($f2)=_filter_by_chr($chr,$rbk2);
+  #list of filtered breakpoints
+  return ($f1,$f2);
 }
 
 #funtion that take into acount the type of variant to build the breakpoint of each SV
