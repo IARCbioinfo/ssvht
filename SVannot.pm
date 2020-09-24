@@ -28,6 +28,7 @@ sub annot_pon_sv{
    my $self=shift;
    my $pon=shift; #MERGE from SURVIVOR
    my $target=shift; #SOMATICS calls
+   my $type=shift;
 
    my $delta=1000;#delta for breakpoint clustering
 
@@ -40,34 +41,41 @@ sub annot_pon_sv{
      my $rb1b=$brk1->{stop}+$delta/2;
      #fetch results from the tree
      my $rbk1=$tree->fetch($rb1a,$rb1b);
-
-     print join(" ",$item->{CHROM},$item->{ID},$rb1a,$rb1b,"breakpoint1",abs($rb1b-$rb1a),scalar(@$rbk1))."\n";
-     #print Dumper(@$rbk1);
+    #print Dumper(@$rbk1);
      my $rb2a=$brk2->{start}-$delta/2;
      my $rb2b=$brk2->{stop}+$delta/2;
+     #fecth the result from the tree for the second breakpoint
      my $rbk2=$tree->fetch($rb2a,$rb2b);
-     print join(" ",$item->{CHROM},$item->{ID},$rb2a,$rb2b,"breakpoint2",abs($rb2b-$rb2a),scalar(@$rbk2))."\n";
-
-     #DataDumper avoid the printing of equal objects
+    #DataDumper avoid the printing of equal objects
      #print Dumper($rbk1);
      #print Dumper($rbk2);
      #we filter the breakpoints considering the intervaltree construction, which ignore the chromosome
      my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
-     _select_results($item,$fr1,$fr2);
-     
+     #we filter by SVTYPE
+     if($type == 1){
+        $fr1=_filter_by_svtype($item->{info}->{SVTYPE},$fr1);
+        $fr2=_filter_by_svtype($item->{info}->{SVTYPE},$fr2);
+     }
+
+     #print join(" ",$item->{CHROM},$item->{ID},$rb1a,$rb1b,"breakpoint1",abs($rb1b-$rb1a),scalar(@$rbk1), $item->{info}->{SVLEN})."\n";
+     #print join(" ",$item->{CHROM},$item->{ID},$rb2a,$rb2b,"breakpoint2",abs($rb2b-$rb2a),scalar(@$rbk2), $item->{info}->{SVLEN})."\n";
+     #we rank selected results
+     my ($matches)=_select_matchs($item,$fr1,$fr2);
+     print join(" ",$item->{CHROM},$item->{ID},scalar(@{$matches}))."\n"
    }
 
 }
 
 
-
-sub _select_results{
+#funtion that select the right results
+sub _select_matchs{
    my ($item,$rbk1,$rbk2)=@_;
    #print join(" ", "count from fucntion",scalar(@$rbk1),scalar(@$rbk2))."\n";
+=bla
    my $ac=scalar(@$rbk1);
    my $bc=scalar(@$rbk2);
    #print Dumper($rbk1,$rbk2);
-   if($ac==0 and $bc==0){
+  if($ac==0 and $bc==0){
      $item->{info}->{PON}=0;#there is no a matching SV on the panel of normals
      $item->{info}->{PON_IDS}=0;#ids of each matching pon
      $item->{info}->{PON_TYPE}=0;#type of each matching pon
@@ -76,27 +84,70 @@ sub _select_results{
      print join(" ","NO-MATCH",$item->{ID},0,0,0,0)."\n";
      return;
    }
-
+=cut
    #we have a posible match
    #$tree->insert({chr=>$item->{CHROM},brk=>1,index=>$i,type=>$item->{info}->{SVTYPE},
    #               id=>$item->{ID}},$brk1->{start},$brk1->{stop});
 
    my $jbk=();
-   #first breakpoint
+   my $both_bp_match=[];
+   #first breakpoint list
+
    foreach my $bp(@{$rbk1}){
-        $jbk->{$bp->{id}}->{$bp->{brk}}++;
+        $jbk->{$bp->{index}}->{bpd}->{$bp->{brk}}++; #check the number of overlapping
+        $jbk->{$bp->{index}}->{bpq}->{1}++;
+        $jbk->{$bp->{index}}->{name}=$bp->{id}; #the name of the SVs might be the same for the PON
+        $jbk->{$bp->{index}}->{type}=$bp->{type};
+        $jbk->{$bp->{index}}->{chr}=$bp->{chr};
+        $jbk->{$bp->{index}}->{len}=$bp->{len};
+        $jbk->{$bp->{index}}->{index}=$bp->{index};
+        #print join(" ",$bp->{chr},$bp->{brk},$bp->{index},$bp->{type},$bp->{id})."\n";
    }
-   #second breakpoint
+   #second breakpoint list
    foreach my $bp(@{$rbk2}){
-        $jbk->{$bp->{id}}->{$bp->{brk}}++;
+        #$jbk->{$bp->{id}}->{$bp->{brk}}++;
+        $jbk->{$bp->{index}}->{bpd}->{$bp->{brk}}++;
+        $jbk->{$bp->{index}}->{bpq}->{2}++;
+        $jbk->{$bp->{index}}->{name}=$bp->{id};
+        $jbk->{$bp->{index}}->{type}=$bp->{type};
+        $jbk->{$bp->{index}}->{chr}=$bp->{chr};
+        $jbk->{$bp->{index}}->{len}=$bp->{len};
+        $jbk->{$bp->{index}}->{index}=$bp->{index};
+        #print join(" ",$bp->{chr},$bp->{brk},$bp->{index},$bp->{type},$bp->{id})."\n";
    }
 
-   print Dumper($jbk);
+   #print Dumper($jbk);
+   #we iterate the jbk looking for hits with two breakpoints
+   foreach my $id (keys %{$jbk}){
+     my ($bpq)=scalar(keys %{$jbk->{$id}->{bpq}});
+     my ($bpd)=scalar(keys %{$jbk->{$id}->{bpd}});
+     if($bpd > 1 and $bpq > 1){
+        my $r=$jbk->{$id};
+        push(@{$both_bp_match},$r);
+     }
+   }
+   #print Dumper($both_bp_match);
+   return $both_bp_match;
 }
 
+#filter by type
+sub _filter_by_svtype{
+      my ($type,$rbk1)=@_;
+      #we filter the list  of breapoints by chr
+      my $f1=[];#array of filtered breakpoints1
+      foreach my $r(@{$rbk1}){
+        #print join(" ",$r->{type},$type)."\n";
+          if($r->{type} eq $type){
+               push(@{$f1},$r);
+            }
+        }
+        return $f1;
+}
+
+#filter results by chromosome, INV,INS,DEL,DUP,TRA
 sub _filter_by_chr{
     my ($chr,$rbk1)=@_;
-    #we filter the list  of breapoin1 by chr
+    #we filter the list  of breapoints by chr
     my $f1=[];#array of filtered breakpoints1
     foreach my $r(@{$rbk1}){
         if($r->{chr} eq $chr){
@@ -106,10 +157,10 @@ sub _filter_by_chr{
       return $f1;
 }
 
+
 #filter breakpoint results by chr, cause of how the interval tree is build
 sub _filter_results_by_chr{
   my ($item,$rbk1,$rbk2)=@_;
-
   my $f1=[];#array of filtered breakpoints1
   my $f2=[]; #array of filtered breakpoint2
   my $type=$item->{info}->{SVTYPE};
@@ -117,7 +168,7 @@ sub _filter_results_by_chr{
 
   my ($f1)=_filter_by_chr($chr,$rbk1);
   #we change chr in case of a BND or a TRAN for breakpoint 2
-  if($type eq "BND" and $type eq "TRA"){
+  if($type eq "BND" or $type eq "TRA"){
        $chr=$item->{info}->{CHR2};
   }
   #we filter the list of breakpoint2 by chr
@@ -178,22 +229,17 @@ sub _build_interval_tree{
     }
     #insert breakpoint 1 into the intervalTree
     $tree->insert({chr=>$item->{CHROM},brk=>1,index=>$i,type=>$item->{info}->{SVTYPE},
-                   id=>$item->{ID}},$brk1->{start},$brk1->{stop});
+                   id=>$item->{ID},len=>$item->{info}->{SVLEN}},$brk1->{start},$brk1->{stop});
 
     #anything that is not a Translocation
     if($type ne "BND" and $type ne "TRA"){
-         #print join("\t",$item->{CHROM},$item->{info}->{SVTYPE},$item->{ID},$item->{POS},
-          #     join("-",$item->{POS}-abs($b1s),$item->{POS}+abs($b1e)),$item->{info}->{END},
-          #     join("-",$item->{info}->{END}-abs($b2s),$item->{info}->{END}+abs($b2e)))."\n";
           #we add the second breakpoint
           $tree->insert({chr=>$item->{CHROM},brk=>2,index=>$i,type=>$item->{info}->{SVTYPE},
-                        id=>$item->{ID}},$brk2->{start},$brk2->{stop});
+                        id=>$item->{ID},len=>$item->{info}->{SVLEN}},$brk2->{start},$brk2->{stop});
     }else{
-       #  print join("\t",$item->{CHROM},$item->{info}->{SVTYPE},$item->{ID},$item->{POS},
-       #        join("-",$item->{POS}-$b1s,$item->{POS}+$b1e),$item->{info}->{CHR2},$item->{info}->{POS2},
-       #        join("-",$item->{info}->{POS2}-$b2s,$item->{info}->{POS2}+$b2e))."\n";
+        #print join(" ",$item->{info}->{CHR2},$item->{info}->{SVTYPE},$brk2->{start},$brk2->{stop},$item->{info}->{POS2})."\n";
           $tree->insert({chr=>$item->{info}->{CHR2},brk=>2,index=>$i,type=>$item->{info}->{SVTYPE},
-                          id=>$item->{ID}},$brk2->{start},$brk2->{stop});
+                          id=>$item->{ID},len=>$item->{info}->{SVLEN}},$brk2->{start},$brk2->{stop});
     }
     $i++;#is an index for fast access to the structure
   }

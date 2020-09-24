@@ -31,6 +31,11 @@ sub normalize_sv{
      my $len=$item->{info}->{SVLEN};
      #the lenght of the SV goes to positive
      $item->{info}->{SVLEN}=abs($len);
+     my $type=$item->{info}->{SVTYPE};
+     #SURVIVOR pon
+     if($type eq "TRA" or $type eq "BND"){
+       $item->{info}->{POS2}=$item->{info}->{END};
+     }
    }
 }
 

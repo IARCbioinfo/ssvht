@@ -40,14 +40,20 @@ sub normalize_sv{
      #total support of the SV
      $item->{info}->{PE_SR}=$item->{info}->{PE}+$item->{info}->{SR};
      #we compute the lengh of the SV
+     #insertions has this varible already
+     #<ID=SVLEN,Number=1,Type=Integer,Description="Insertion length for SVTYPE=INS.">
      my $type=$item->{info}->{SVTYPE};
      if($type eq "DEL" or $type eq "DUP" or $type eq "INV"){
             my $l=abs($item->{POS}-$item->{info}->{END});
             $item->{info}->{SVLEN}=$l;
      }
 
+
+     #we change the BND type of DELLY to TRA = TRANSLOCATION
+     ###ALT=<ID=BND,Description="Translocation">
      if($type eq "BND"){
              $item->{info}->{SVLEN}=0;
+             $item->{info}->{SVTYPE}="TRA";#change BND for translocation
      }
 
      #print join("\t",$item->{ID},$item->{info}->{PE},$item->{info}->{SR},$type,$item->{info}->{SVLEN})."\n";

@@ -27,6 +27,8 @@ if ( !defined $opts{a}  ) {
 
 my $target = new SV($opts{a});
 my $pon = new SV($opts{b});
+#filter
+my $ftype=0;#true means that vars are filers by type
 
 #object to annotate SVs
 my $sva=new SVannot();
@@ -41,7 +43,7 @@ $target->basic_filters(3,30,500000000);
 #annotate using PANEL of normals
 $pon->norm_svs(0);
 #print Dumper($pon);
-$sva->annot_pon_sv($pon,$target);
+$sva->annot_pon_sv($pon,$target,$ftype);
 #$sv->annotate_pon();
 #annotate GNOMAD
 #$sv->annotate_gnomad();
