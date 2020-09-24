@@ -28,14 +28,19 @@ sub annot_pon_sv{
    my $self=shift;
    my $pon=shift; #MERGE from SURVIVOR
    my $target=shift; #SOMATICS calls
-   my $type=shift;
+   my $type=shift; #consider type of variant
+   my $delta=shift;#delta around bearkpoints
 
-   my $delta=1000;#delta for breakpoint clustering
+   #my $delta=1000;#delta for breakpoint clustering
 
    my $tree =$self->_build_interval_tree($pon);
+   my $total_vars=0;
+   my $total_annotations=0;
    #we compute the overlaps with the given target calls
    foreach my $item (@{$target->{entries}}){
+     next if($item->{info}->{ALIVE} == 0);
      my ($brk1,$brk2)=_get_breakpoints($item);
+     $total_vars++;
      #add delta to breakpoints
      my $rb1a=$brk1->{start}-$delta/2;
      my $rb1b=$brk1->{stop}+$delta/2;
@@ -61,31 +66,45 @@ sub annot_pon_sv{
      #print join(" ",$item->{CHROM},$item->{ID},$rb2a,$rb2b,"breakpoint2",abs($rb2b-$rb2a),scalar(@$rbk2), $item->{info}->{SVLEN})."\n";
      #we rank selected results
      my ($matches)=_select_matchs($item,$fr1,$fr2);
-     print join(" ",$item->{CHROM},$item->{ID},scalar(@{$matches}))."\n"
-   }
 
+     my $nmatches=scalar(@{$matches});
+     #the variant do not match PON
+     if($nmatches == 0){
+       $item->{info}->{PON}=0;#there is no a matching SV on the panel of normals
+       $item->{info}->{PON_IDS}=0;#ids of each matching pon
+       $item->{info}->{PON_TYPE}=0;#type of each matching pon
+       $item->{info}->{PON_SUPP}=0;#number of genomes supporting the PON
+     }else{
+        my $tmp=();
+
+        foreach my $r (@{$matches}){
+            my $p=@{$pon->{entries}}[$r->{index}];
+            push(@{$tmp->{PON_SUPP}},$p->{info}->{SUPP});
+            push(@{$tmp->{PON_TYPE}},$p->{info}->{SVTYPE});
+            push(@{$tmp->{PON_IDS}},$r->{name});
+            #print Dumper($r);
+            #print Dumper($p);
+        }
+        $total_annotations++;
+        #we fill the info
+        $item->{info}->{PON}=$nmatches;#there is $nmatches matching the PON
+        $item->{info}->{PON_SUPP}=join(",",@{$tmp->{PON_SUPP}});
+        $item->{info}->{PON_TYPE}=join(",",@{$tmp->{PON_TYPE}});
+        $item->{info}->{PON_IDS}=join(",",@{$tmp->{PON_IDS}});
+     }
+     #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{PON},
+     #                $item->{info}->{PON_SUPP},$item->{info}->{PON_TYPE},
+     #                $item->{info}->{PON_IDS})."\n";
+     #print join(" ",$item->{CHROM},$item->{ID},scalar(@{$matches}),$nmatches)."\n";
+   }
+   print "Total SVs : $total_vars\nTotal Annotated PON : $total_annotations\nPON annotated (\%) : ".$total_annotations/$total_vars."\n";
 }
 
 
 #funtion that select the right results
 sub _select_matchs{
    my ($item,$rbk1,$rbk2)=@_;
-   #print join(" ", "count from fucntion",scalar(@$rbk1),scalar(@$rbk2))."\n";
-=bla
-   my $ac=scalar(@$rbk1);
-   my $bc=scalar(@$rbk2);
-   #print Dumper($rbk1,$rbk2);
-  if($ac==0 and $bc==0){
-     $item->{info}->{PON}=0;#there is no a matching SV on the panel of normals
-     $item->{info}->{PON_IDS}=0;#ids of each matching pon
-     $item->{info}->{PON_TYPE}=0;#type of each matching pon
-     $item->{info}->{PON_SUPP}=0;#number of genomes supporting the PON
-     #print Dumper($item);
-     print join(" ","NO-MATCH",$item->{ID},0,0,0,0)."\n";
-     return;
-   }
-=cut
-   #we have a posible match
+
    #$tree->insert({chr=>$item->{CHROM},brk=>1,index=>$i,type=>$item->{info}->{SVTYPE},
    #               id=>$item->{ID}},$brk1->{start},$brk1->{stop});
 
@@ -121,7 +140,7 @@ sub _select_matchs{
    foreach my $id (keys %{$jbk}){
      my ($bpq)=scalar(keys %{$jbk->{$id}->{bpq}});
      my ($bpd)=scalar(keys %{$jbk->{$id}->{bpd}});
-     if($bpd > 1 and $bpq > 1){
+     if($bpd == 2 and $bpq == 2){
         my $r=$jbk->{$id};
         push(@{$both_bp_match},$r);
      }

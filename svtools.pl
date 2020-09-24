@@ -29,7 +29,7 @@ my $target = new SV($opts{a});
 my $pon = new SV($opts{b});
 #filter
 my $ftype=0;#true means that vars are filers by type
-
+my $fdelta=1000; #average distance for breakpoint overlap
 #object to annotate SVs
 my $sva=new SVannot();
 #remove SVs on non-chr
@@ -37,14 +37,12 @@ my $sva=new SVannot();
 #add SR and PE support to predictions
 #store all in an internal array
 #load the genotype information
-$target->norm_svs(1);
+$target->norm_svs(1);#load genotype information
 #remove SVs shorter than 30 bp, matching to alternative chromosomes or with read support lower than 5
 $target->basic_filters(3,30,500000000);
 #annotate using PANEL of normals
-$pon->norm_svs(0);
-#print Dumper($pon);
-$sva->annot_pon_sv($pon,$target,$ftype);
-#$sv->annotate_pon();
+$pon->norm_svs(0);#do not load genotype information
+$sva->annot_pon_sv($pon,$target,$ftype,$fdelta); #match target using the PON
 #annotate GNOMAD
 #$sv->annotate_gnomad();
 #annoted COSMIC
