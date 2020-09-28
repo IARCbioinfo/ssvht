@@ -21,6 +21,7 @@ use DELLY;
 use Manta;
 use SVaba;
 use SURVIVOR;
+use GNOMAD;
 
 sub new{
   my ($packagename, $vcf) = @_;
@@ -121,11 +122,15 @@ sub _guess_caller{
        $caller="SVaba";
      }elsif($item->{info}->{SVMETHOD} =~m/SURVIVOR/){
         $caller="SURVIVOR";
+     }elsif(defined $item->{info}->{DBVARID}){
+         $caller="GNOMAD";
+     }elsif($item->{info}->{SVMETHOD} =~m/PCAWG/){
+        $caller="PCAWG";
      }else{
        print "Unknow caller\n";
      }
   }
-  
+
   #we
   my $tool=();
   if($caller eq "DELLY2"){
@@ -138,6 +143,10 @@ sub _guess_caller{
     $tool = new SVaba();
   }elsif($caller eq "SURVIVOR"){
     $tool = new SURVIVOR();
+  }elsif($caller eq "GNOMAD"){
+    $tool = new GNOMAD();
+  }elsif($caller eq "PCAWG"){
+    $tool = new PCAWG();
   }
 
   return $tool;

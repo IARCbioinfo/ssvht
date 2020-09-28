@@ -14,19 +14,29 @@ use SVannot;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf>\n";
+   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:", \%opts );
+getopts( "a:b:c:d:e:", \%opts );
 if ( !defined $opts{a}  ) {
    usage;
 }
-
+#target file
 my $target = new SV($opts{a});
+#custom PON file
 my $pon = new SV($opts{b});
+#GNOMAD PON file
+my $gnomad= new SV($opts{c});
+#do not load genotype information
+#$gnomad->norm_svs(0);
+
+#load PCAWG file
+my $pcawg= new SV($opts{d});
+$pcawg->norn_svs(0);
+
 #filter
 my $ftype=0;#true means that vars are filers by type
 my $fdelta=1000; #average distance for breakpoint overlap
@@ -42,8 +52,12 @@ $target->norm_svs(1);#load genotype information
 $target->basic_filters(3,30,500000000);
 #annotate using PANEL of normals
 $pon->norm_svs(0);#do not load genotype information
-$sva->annot_pon_sv($pon,$target,$ftype,$fdelta); #match target using the PON
+
+#annotate custom PON
+#$sva->annot_customPON_sv($pon,$target,$ftype,$fdelta); #match target using the PON
 #annotate GNOMAD
+#$sva->annot_gnomad_sv($gnomad,$target,$ftype,$fdelta);
+$sva->annot_pcawg_sv($gnomad,$target,$ftype,$fdelta);
 #$sv->annotate_gnomad();
 #annoted COSMIC
 #$sv->annotate_cosmic();

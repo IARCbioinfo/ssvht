@@ -23,8 +23,88 @@ sub new{
   return ($self);
 }
 
+#annot GNOMAD SVs
+sub annot_gnomad_sv{
+   my $self=shift;
+   my $pon=shift; #MERGE from SURVIVOR
+   my $target=shift; #SOMATICS calls
+   my $type=shift; #consider type of variant
+   my $delta=shift;#delta around bearkpoints
+   #my $delta=1000;#delta for breakpoint clustering
+
+   my $tree =$self->_build_interval_tree($pon);
+   my $total_vars=0;
+   my $total_annotations=0;
+   #we compute the overlaps with the given target calls
+   foreach my $item (@{$target->{entries}}){
+     next if($item->{info}->{ALIVE} == 0);
+     my ($brk1,$brk2)=_get_breakpoints($item);
+     $total_vars++;
+     #add delta to breakpoints
+     my $rb1a=$brk1->{start}-$delta/2;
+     my $rb1b=$brk1->{stop}+$delta/2;
+     #fetch results from the tree
+     my $rbk1=$tree->fetch($rb1a,$rb1b);
+    #print Dumper(@$rbk1);
+     my $rb2a=$brk2->{start}-$delta/2;
+     my $rb2b=$brk2->{stop}+$delta/2;
+     #fecth the result from the tree for the second breakpoint
+     my $rbk2=$tree->fetch($rb2a,$rb2b);
+    #DataDumper avoid the printing of equal objects
+     #print Dumper($rbk1);
+     #print Dumper($rbk2);
+     #we filter the breakpoints considering the intervaltree construction, which ignore the chromosome
+     my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
+     #we filter by SVTYPE
+     if($type == 1){
+        $fr1=_filter_by_svtype($item->{info}->{SVTYPE},$fr1);
+        $fr2=_filter_by_svtype($item->{info}->{SVTYPE},$fr2);
+     }
+
+     #we rank selected results
+     my ($matches)=_select_matchs($item,$fr1,$fr2);
+     #number of matches
+     my $nmatches=scalar(@{$matches});
+
+     #the variant do not match PON
+     if($nmatches == 0){
+       $item->{info}->{GNOMAD}=0;#there is no a matching SV GNOMAD
+       $item->{info}->{GNOMAD_IDS}=0;#ids of each matching GNOMAD
+       $item->{info}->{GNOMAD_TYPE}=0;#type of each matching GNOMAD
+       $item->{info}->{GNOMAD_AC}=0;#AC of GNOMAD CALLs
+     }else{
+        my $tmp=();
+
+        foreach my $r (@{$matches}){
+            my $p=@{$pon->{entries}}[$r->{index}];
+            push(@{$tmp->{GNOMAD_AC}},$p->{info}->{AC});
+            push(@{$tmp->{GNOMAD_TYPE}},$p->{info}->{SVTYPE});
+            push(@{$tmp->{GNOMAD_IDS}},$p->{ID});
+            #print Dumper($r);
+            #print Dumper($p);
+            #print Dumper($item);
+        }
+        $total_annotations++;
+        #we fill the info
+        $item->{info}->{GNOMAD}=$nmatches;#there is $nmatches matching the PON
+        $item->{info}->{GNOMAD_AC}=join(",",@{$tmp->{GNOMAD_AC}});
+        $item->{info}->{GNOMAD_TYPE}=join(",",@{$tmp->{GNOMAD_TYPE}});
+        $item->{info}->{GNOMAD_IDS}=join(",",@{$tmp->{GNOMAD_IDS}});
+     }
+
+     #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{GNOMAD},
+     #               $item->{info}->{GNOMAD_AC},$item->{info}->{GNOMAD_TYPE},
+     #               $item->{info}->{GNOMAD_IDS})."\n";
+   }
+
+   #ask breakpoint context, just the number of variants around each BREAKPOINT
+
+   print "Total SVs : $total_vars\nTotal Annotated GNOMAD : $total_annotations\nGNOMAD annotated (\%) : ".$total_annotations/$total_vars."\n";
+}
+
+
 #add missing values to a set of SURVIVOR SVs
-sub annot_pon_sv{
+sub annot_customPON_sv{
    my $self=shift;
    my $pon=shift; #MERGE from SURVIVOR
    my $target=shift; #SOMATICS calls
