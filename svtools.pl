@@ -35,7 +35,7 @@ my $gnomad= new SV($opts{c});
 
 #load PCAWG file
 my $pcawg= new SV($opts{d});
-$pcawg->norn_svs(0);
+$pcawg->norm_svs(0);
 
 #filter
 my $ftype=0;#true means that vars are filers by type
@@ -57,7 +57,7 @@ $pon->norm_svs(0);#do not load genotype information
 #$sva->annot_customPON_sv($pon,$target,$ftype,$fdelta); #match target using the PON
 #annotate GNOMAD
 #$sva->annot_gnomad_sv($gnomad,$target,$ftype,$fdelta);
-$sva->annot_pcawg_sv($gnomad,$target,$ftype,$fdelta);
+$sva->annot_pcawg_sv($pcawg,$target,$ftype,$fdelta);
 #$sv->annotate_gnomad();
 #annoted COSMIC
 #$sv->annotate_cosmic();
