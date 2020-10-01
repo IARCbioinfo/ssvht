@@ -210,6 +210,33 @@ sub basic_filters{
   print "############## BASIC FILTERS END #################\n";
 }
 
+#print the listed colums to
+sub print_matrix{
+  my $self=shift;
+  my $prefix=shift;
+
+  my @cols=("PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
+            "GNOMAD","GNOMAD_AC","GNOMAD_TYPE","GNOMAD_IDS","GNOMAD_BC1","GNOMAD_BC2",
+            "PCAWG","PCAWG_SUP","PCAWG_TYPE","PCAWG_IDS","PCAWG_BC1","PCAWG_BC2");
+
+  open(FILE,">".$prefix.".txt") or die "cannot open $prefix.txt file\n";
+  print FILE join(" ","ID","CHROM","POS","TYPE",@cols)."\n";
+
+  foreach my $item (@{$self->{entries}}){
+       next if($item->{info}->{ALIVE} == 0);
+       my @tmp=();
+        foreach my $v (@cols){
+              if(defined $item->{info}->{$v}){
+                push(@tmp,$item->{info}->{$v});
+              }else{
+                push(@tmp,0);
+                print "$v not defined on SV info\n";
+              }
+        }
+        print FILE join(" ",$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{SVTYPE},@tmp)."\n";
+  }
+
+}
 
 
 sub filter_by_region{

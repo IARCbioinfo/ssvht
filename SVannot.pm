@@ -23,6 +23,42 @@ sub new{
   return ($self);
 }
 
+
+#ask context for breakpoint1 and breakpoint2 def:10kb
+sub _get_context_sv{
+    my $tree=shift;
+    my $item=shift;
+    my $brk1=shift;
+    my $brk2=shift;
+    my $delta=shift;#10kb by default
+
+    print Dumper($item);
+    print Dumper($brk1);
+    print Dumper($brk2);
+    #add delta to breakpoints
+    my $rb1a=$brk1->{start}-$delta/2;
+    my $rb1b=$brk1->{stop}+$delta/2;
+    print join(" ",$rb1a,$rb1b,abs($rb1a-$rb1b))."\n";
+    #fetch results from the tree
+    my $rbk1=$tree->fetch($rb1a,$rb1b);
+   #print Dumper(@$rbk1);
+    my $rb2a=$brk2->{start}-$delta/2;
+    my $rb2b=$brk2->{stop}+$delta/2;
+    #fecth the result from the tree for the second breakpoint
+
+    print join(" ",$rb2a,$rb2b,abs($rb2a-$rb2b))."\n";
+    my $rbk2=$tree->fetch($rb2a,$rb2b);
+    my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
+
+    #print Dumper($fr1);
+    #print Dumper($fr2);
+    print join(" ","context BRK1",scalar(@$fr1),"contex BRK2",scalar(@$fr2))."\n";
+    my $bc1=scalar(@$fr1);
+    my $bc2=scalar(@$fr2);
+    #we return the
+    return ($bc1,$bc2);
+}
+
 #annot PCAWG
 sub annot_pcawg_sv{
    my $self=shift;
@@ -90,16 +126,26 @@ sub annot_pcawg_sv{
         $item->{info}->{PCAWG_SUP}=join(",",@{$tmp->{PCAWG_SUP}});
         $item->{info}->{PCAWG_TYPE}=join(",",@{$tmp->{PCAWG_TYPE}});
         $item->{info}->{PCAWG_IDS}=join(",",@{$tmp->{PCAWG_IDS}});
-     }
 
-     print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{PCAWG},
-                    $item->{info}->{PCAWG_SUP},$item->{info}->{PCAWG_TYPE},
-                    $item->{info}->{PCAWG_IDS})."\n";
+
+
+     }
+     #we ask for nearby SVs
+     my ($bc1,$bc2)=_get_context_sv($tree,$item,$brk1,$brk2,10000);#10kb nearby variants
+     $item->{info}->{PCAWG_BC1}=$bc1;
+     $item->{info}->{PCAWG_BC2}=$bc2;
+    #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{PCAWG},
+    #                $item->{info}->{PCAWG_SUP},$item->{info}->{PCAWG_TYPE},
+    #                $item->{info}->{PCAWG_IDS}, $item->{info}->{PCAWG_BC1},$item->{info}->{PCAWG_BC2})."\n";
    }
 
    #ask breakpoint context, just the number of variants around each BREAKPOINT
-
-   print "Total SVs : $total_vars\nTotal Annotated PCAWG : $total_annotations\nPCAWG annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "############## PCAWG annotations #################\n";
+   print "Total SVs : $total_vars\n";
+   print "Total Annotated PCAWG : $total_annotations\n";
+   print "PCAWG annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "############## PCAWG annotations END #################\n";
+   $tree=();
 }
 
 #annot GNOMAD SVs
@@ -171,14 +217,24 @@ sub annot_gnomad_sv{
         $item->{info}->{GNOMAD_IDS}=join(",",@{$tmp->{GNOMAD_IDS}});
      }
 
+     #we ask for nearby SVs
+     my ($bc1,$bc2)=_get_context_sv($tree,$item,$brk1,$brk2,10000);#10kb nearby variants
+     $item->{info}->{GNOMAD_BC1}=$bc1;
+     $item->{info}->{GNOMAD_BC2}=$bc2;
      #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{GNOMAD},
      #               $item->{info}->{GNOMAD_AC},$item->{info}->{GNOMAD_TYPE},
      #               $item->{info}->{GNOMAD_IDS})."\n";
    }
 
-   #ask breakpoint context, just the number of variants around each BREAKPOINT
+   #print "Total SVs : $total_vars\nTotal Annotated GNOMAD : $total_annotations\nGNOMAD annotated (\%) : ".$total_annotations/$total_vars."\n";
 
-   print "Total SVs : $total_vars\nTotal Annotated GNOMAD : $total_annotations\nGNOMAD annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "############## GNOMAD annotations #################\n";
+   print "Total SVs : $total_vars\n";
+   print "Total Annotated GNOMAD : $total_annotations\n";
+   print "GNOMAD annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "############## GNOMAD annotations END #################\n";
+   $tree=();
+
 }
 
 
@@ -251,12 +307,26 @@ sub annot_customPON_sv{
         $item->{info}->{PON_TYPE}=join(",",@{$tmp->{PON_TYPE}});
         $item->{info}->{PON_IDS}=join(",",@{$tmp->{PON_IDS}});
      }
+
+     #we ask for nearby SVs
+     my ($bc1,$bc2)=_get_context_sv($tree,$item,$brk1,$brk2,10000);#10kb nearby variants
+     $item->{info}->{PON_BC1}=$bc1;
+     $item->{info}->{PON_BC2}=$bc2;
+
      #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{PON},
      #                $item->{info}->{PON_SUPP},$item->{info}->{PON_TYPE},
      #                $item->{info}->{PON_IDS})."\n";
      #print join(" ",$item->{CHROM},$item->{ID},scalar(@{$matches}),$nmatches)."\n";
    }
-   print "Total SVs : $total_vars\nTotal Annotated PON : $total_annotations\nPON annotated (\%) : ".$total_annotations/$total_vars."\n";
+   #print "Total SVs : $total_vars\nTotal Annotated PON : $total_annotations\nPON annotated (\%) : ".$total_annotations/$total_vars."\n";
+
+   print "############## Custom PON annotations #################\n";
+   print "Total SVs : $total_vars\n";
+   print "Total Annotated PON : $total_annotations\n";
+   print "PON annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "############## Custom PON annotations END #################\n";
+   $tree=();
+
 }
 
 

@@ -26,16 +26,6 @@ if ( !defined $opts{a}  ) {
 }
 #target file
 my $target = new SV($opts{a});
-#custom PON file
-my $pon = new SV($opts{b});
-#GNOMAD PON file
-my $gnomad= new SV($opts{c});
-#do not load genotype information
-#$gnomad->norm_svs(0);
-
-#load PCAWG file
-my $pcawg= new SV($opts{d});
-$pcawg->norm_svs(0);
 
 #filter
 my $ftype=0;#true means that vars are filers by type
@@ -50,14 +40,33 @@ my $sva=new SVannot();
 $target->norm_svs(1);#load genotype information
 #remove SVs shorter than 30 bp, matching to alternative chromosomes or with read support lower than 5
 $target->basic_filters(3,30,500000000);
+
+#load custom PON file
+my $pon = new SV($opts{b});
 #annotate using PANEL of normals
 $pon->norm_svs(0);#do not load genotype information
+#annotate custom PON SVs and the context
+$sva->annot_customPON_sv($pon,$target,$ftype,$fdelta); #match target using the PON
+$pon=();#we free the memory of the variable
 
-#annotate custom PON
-#$sva->annot_customPON_sv($pon,$target,$ftype,$fdelta); #match target using the PON
-#annotate GNOMAD
-#$sva->annot_gnomad_sv($gnomad,$target,$ftype,$fdelta);
+#load GNOMAD PON file
+my $gnomad= new SV($opts{c});
+#do not load genotype information
+$gnomad->norm_svs(0);
+#annotate GNOMAD SVs and the context
+$sva->annot_gnomad_sv($gnomad,$target,$ftype,$fdelta);
+$gnomad=(); #we free the memory of the variable
+
+#load PCAWG file
+my $pcawg= new SV($opts{d});
+$pcawg->norm_svs(0);
+#annotate PCAWG SVs and the context
 $sva->annot_pcawg_sv($pcawg,$target,$ftype,$fdelta);
-#$sv->annotate_gnomad();
-#annoted COSMIC
+$pcawg=();#we free the memory of the variable
+
+#$sva->annot_breapoint_coverage();
+#print the matrix to train the RF tool
+$target->print_matrix("MESO-SV-features");
+
+#annoted COSMIC SVs are of low quality and were replaced by
 #$sv->annotate_cosmic();
