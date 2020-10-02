@@ -14,13 +14,13 @@ use SVannot;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS>\n";
+   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS> -s <Somatic.vcf>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:c:d:e:", \%opts );
+getopts( "a:b:c:d:e:s:", \%opts );
 if ( !defined $opts{a}  ) {
    usage;
 }
@@ -28,7 +28,7 @@ if ( !defined $opts{a}  ) {
 my $target = new SV($opts{a});
 
 #filter
-my $ftype=0;#true means that vars are filers by type
+my $ftype=1;#true means that vars are filers by type
 my $fdelta=1000; #average distance for breakpoint overlap
 #object to annotate SVs
 my $sva=new SVannot();
@@ -40,6 +40,15 @@ my $sva=new SVannot();
 $target->norm_svs(1);#load genotype information
 #remove SVs shorter than 30 bp, matching to alternative chromosomes or with read support lower than 5
 $target->basic_filters(3,30,500000000);
+
+#load somatic variants of the sample
+my $som = new SV($opts{s});
+#annotate using PANEL of normals
+$som->norm_svs(0);#do not load genotype information
+#annotate custom PON SVs and the context
+$sva->annot_Somatic_sv($som,$target,$ftype,$fdelta); #match target using the PON
+$som=();#we free the memory of the variable
+
 
 #load custom PON file
 my $pon = new SV($opts{b});

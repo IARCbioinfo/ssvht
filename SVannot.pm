@@ -1,5 +1,5 @@
 package SVannot;
-
+use List::Util qw(max);
 =head1 NAME
 SVannot
 
@@ -32,13 +32,13 @@ sub _get_context_sv{
     my $brk2=shift;
     my $delta=shift;#10kb by default
 
-    print Dumper($item);
-    print Dumper($brk1);
-    print Dumper($brk2);
+    #print Dumper($item);
+    #print Dumper($brk1);
+    #print Dumper($brk2);
     #add delta to breakpoints
     my $rb1a=$brk1->{start}-$delta/2;
     my $rb1b=$brk1->{stop}+$delta/2;
-    print join(" ",$rb1a,$rb1b,abs($rb1a-$rb1b))."\n";
+    #print join(" ",$rb1a,$rb1b,abs($rb1a-$rb1b))."\n";
     #fetch results from the tree
     my $rbk1=$tree->fetch($rb1a,$rb1b);
    #print Dumper(@$rbk1);
@@ -46,18 +46,111 @@ sub _get_context_sv{
     my $rb2b=$brk2->{stop}+$delta/2;
     #fecth the result from the tree for the second breakpoint
 
-    print join(" ",$rb2a,$rb2b,abs($rb2a-$rb2b))."\n";
+    #print join(" ",$rb2a,$rb2b,abs($rb2a-$rb2b))."\n";
     my $rbk2=$tree->fetch($rb2a,$rb2b);
     my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
 
     #print Dumper($fr1);
     #print Dumper($fr2);
-    print join(" ","context BRK1",scalar(@$fr1),"contex BRK2",scalar(@$fr2))."\n";
+    #print join(" ","context BRK1",scalar(@$fr1),"contex BRK2",scalar(@$fr2))."\n";
     my $bc1=scalar(@$fr1);
     my $bc2=scalar(@$fr2);
     #we return the
     return ($bc1,$bc2);
 }
+
+
+#annot somatic SVs of the sample
+
+#sub {}
+sub annot_Somatic_sv{
+   my $self=shift;
+   my $pon=shift; #MERGE from SURVIVOR
+   my $target=shift; #SOMATICS calls
+   my $type=shift; #consider type of variant
+   my $delta=shift;#delta around bearkpoints
+   #my $delta=1000;#delta for breakpoint clustering
+
+   my $tree =$self->_build_interval_tree($pon);
+   my $total_vars=0;
+   my $total_annotations=0;
+   #we compute the overlaps with the given target calls
+   foreach my $item (@{$target->{entries}}){
+     next if($item->{info}->{ALIVE} == 0);
+     my ($brk1,$brk2)=_get_breakpoints($item);
+     $total_vars++;
+     #add delta to breakpoints
+     my $rb1a=$brk1->{start}-$delta/2;
+     my $rb1b=$brk1->{stop}+$delta/2;
+     #fetch results from the tree
+     my $rbk1=$tree->fetch($rb1a,$rb1b);
+    #print Dumper(@$rbk1);
+     my $rb2a=$brk2->{start}-$delta/2;
+     my $rb2b=$brk2->{stop}+$delta/2;
+     #fecth the result from the tree for the second breakpoint
+     my $rbk2=$tree->fetch($rb2a,$rb2b);
+    #DataDumper avoid the printing of equal objects
+     #print Dumper($rbk1);
+     #print Dumper($rbk2);
+     #we filter the breakpoints considering the intervaltree construction, which ignore the chromosome
+     my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
+     #we filter by SVTYPE
+     if($type == 1){
+        $fr1=_filter_by_svtype($item->{info}->{SVTYPE},$fr1);
+        $fr2=_filter_by_svtype($item->{info}->{SVTYPE},$fr2);
+     }
+
+     #we rank selected results
+     my ($matches)=_select_matchs($item,$fr1,$fr2);
+     #number of matches
+     my $nmatches=scalar(@{$matches});
+
+     #the variant do not match PON
+     if($nmatches == 0){
+       $item->{info}->{SOMATIC}=0;#there is no a matching SV GNOMAD
+       $item->{info}->{SOMATIC_IDS}=0;#ids of each matching GNOMAD
+       $item->{info}->{SOMATIC_TYPE}=0;#type of each matching GNOMAD
+       #$item->{info}->{PCAWG_SUP}=0;#AC of GNOMAD CALLs
+     }else{
+        my $tmp=();
+
+        foreach my $r (@{$matches}){
+            my $p=@{$pon->{entries}}[$r->{index}];
+            #push(@{$tmp->{PCAWG_SUP}},$p->{info}->{SUPP});
+            push(@{$tmp->{SOMATIC_TYPE}},$p->{info}->{SVTYPE});
+            push(@{$tmp->{SOMATIC_IDS}},$p->{ID});
+            #print Dumper($r);
+            #print Dumper($p);
+            #print Dumper($item);
+        }
+        $total_annotations++;
+        #we fill the info
+        $item->{info}->{SOMATIC}=$nmatches;#there is $nmatches matching the PON
+        #$item->{info}->{PCAWG_SUP}=join(",",@{$tmp->{PCAWG_SUP}});
+        $item->{info}->{SOMATIC_TYPE}=join(",",@{$tmp->{SOMATIC_TYPE}});
+        $item->{info}->{SOMATIC_IDS}=join(",",@{$tmp->{SOMATIC_IDS}});
+
+     }
+     #we ask for nearby SVs
+    # my ($bc1,$bc2)=_get_context_sv($tree,$item,$brk1,$brk2,10000);#10kb nearby variants
+    # $item->{info}->{PCAWG_BC1}=$bc1;
+    # $item->{info}->{PCAWG_BC2}=$bc2;
+    #print join(" ",$item->{CHROM},$item->{ID}, $item->{info}->{PCAWG},
+    #                $item->{info}->{PCAWG_SUP},$item->{info}->{PCAWG_TYPE},
+    #                $item->{info}->{PCAWG_IDS}, $item->{info}->{PCAWG_BC1},$item->{info}->{PCAWG_BC2})."\n";
+   }
+
+   #ask breakpoint context, just the number of variants around each BREAKPOINT
+   print "############## Somatic annotations #################\n";
+   print "Total SVs : $total_vars\n";
+   print "Total Annotated Somatic : $total_annotations\n";
+   print "Somatic annotated (\%) : ".($total_annotations/$total_vars * 100)."\n";
+   print "############## Somatic annotations END #################\n";
+   $tree=();
+}
+
+
+
 
 #annot PCAWG
 sub annot_pcawg_sv{
@@ -212,7 +305,7 @@ sub annot_gnomad_sv{
         $total_annotations++;
         #we fill the info
         $item->{info}->{GNOMAD}=$nmatches;#there is $nmatches matching the PON
-        $item->{info}->{GNOMAD_AC}=join(",",@{$tmp->{GNOMAD_AC}});
+        $item->{info}->{GNOMAD_AC}=join(",",,max(@{$tmp->{GNOMAD_AC}}));
         $item->{info}->{GNOMAD_TYPE}=join(",",@{$tmp->{GNOMAD_TYPE}});
         $item->{info}->{GNOMAD_IDS}=join(",",@{$tmp->{GNOMAD_IDS}});
      }
@@ -231,7 +324,7 @@ sub annot_gnomad_sv{
    print "############## GNOMAD annotations #################\n";
    print "Total SVs : $total_vars\n";
    print "Total Annotated GNOMAD : $total_annotations\n";
-   print "GNOMAD annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "GNOMAD annotated (\%) : ".($total_annotations/$total_vars * 100)."\n";
    print "############## GNOMAD annotations END #################\n";
    $tree=();
 
@@ -303,7 +396,7 @@ sub annot_customPON_sv{
         $total_annotations++;
         #we fill the info
         $item->{info}->{PON}=$nmatches;#there is $nmatches matching the PON
-        $item->{info}->{PON_SUPP}=join(",",@{$tmp->{PON_SUPP}});
+        $item->{info}->{PON_SUPP}=join(",",max(@{$tmp->{PON_SUPP}}));
         $item->{info}->{PON_TYPE}=join(",",@{$tmp->{PON_TYPE}});
         $item->{info}->{PON_IDS}=join(",",@{$tmp->{PON_IDS}});
      }
@@ -323,7 +416,7 @@ sub annot_customPON_sv{
    print "############## Custom PON annotations #################\n";
    print "Total SVs : $total_vars\n";
    print "Total Annotated PON : $total_annotations\n";
-   print "PON annotated (\%) : ".$total_annotations/$total_vars."\n";
+   print "PON annotated (\%) : ".($total_annotations/$total_vars * 100)."\n";
    print "############## Custom PON annotations END #################\n";
    $tree=();
 
