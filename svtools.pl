@@ -14,19 +14,18 @@ use SVannot;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS> -s <Somatic.vcf>\n";
+   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS> -s <Somatic.vcf> -p <prefix>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:c:d:e:s:", \%opts );
-if ( !defined $opts{a}  ) {
+getopts( "a:b:c:d:e:s:p:", \%opts );
+if ( !defined $opts{a} or !defined $opts{p}) {
    usage;
 }
 #target file
 my $target = new SV($opts{a});
-
 #filter
 my $ftype=1;#true means that vars are filers by type
 my $fdelta=1000; #average distance for breakpoint overlap
@@ -48,7 +47,6 @@ $som->norm_svs(0);#do not load genotype information
 #annotate custom PON SVs and the context
 $sva->annot_Somatic_sv($som,$target,$ftype,$fdelta); #match target using the PON
 $som=();#we free the memory of the variable
-
 
 #load custom PON file
 my $pon = new SV($opts{b});
@@ -72,10 +70,8 @@ $pcawg->norm_svs(0);
 #annotate PCAWG SVs and the context
 $sva->annot_pcawg_sv($pcawg,$target,$ftype,$fdelta);
 $pcawg=();#we free the memory of the variable
-
 #$sva->annot_breapoint_coverage();
 #print the matrix to train the RF tool
-$target->print_matrix("MESO-SV-features");
-
-#annoted COSMIC SVs are of low quality and were replaced by
+$target->print_matrix($opts{p});
+#annoted COSMIC SVs are of low quality and were replaced by PCAWG
 #$sv->annotate_cosmic();
