@@ -1,6 +1,6 @@
 ###############################################################################
 # Author: Alex Di Genova
-# Laboratory: ERABLE/INRIA
+# Laboratory: GCS/IARC
 # Copyright (c)
 # year: 2020
 ###############################################################################
@@ -27,7 +27,7 @@ if ( !defined $opts{a} or !defined $opts{p}) {
 #target file
 my $target = new SV($opts{a});
 #filter
-my $ftype=1;#true means that vars are filers by type
+my $ftype=0;#true means that vars are filers by type
 my $fdelta=1000; #average distance for breakpoint overlap
 #object to annotate SVs
 my $sva=new SVannot();
@@ -37,8 +37,8 @@ my $sva=new SVannot();
 #store all in an internal array
 #load the genotype information
 $target->norm_svs(1);#load genotype information
-#remove SVs shorter than 30 bp, matching to alternative chromosomes or with read support lower than 5
-$target->basic_filters(3,30,500000000);
+#remove SVs shorter than 50 bp, matching to alternative chromosomes or with read support lower than 5
+$target->basic_filters(3,50,500000000);
 
 #load somatic variants of the sample
 my $som = new SV($opts{s});
