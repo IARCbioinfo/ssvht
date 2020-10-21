@@ -24,6 +24,7 @@ getopts( "a:b:c:d:e:s:p:", \%opts );
 if ( !defined $opts{a} or !defined $opts{p}) {
    usage;
 }
+
 #target file
 my $target = new SV($opts{a});
 #filter

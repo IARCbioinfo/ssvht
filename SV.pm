@@ -214,8 +214,8 @@ sub basic_filters{
 sub print_matrix{
   my $self=shift;
   my $prefix=shift;
-
-  my @cols=("PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
+#SVlen PE_SR PE-support Split read support
+  my @cols=("SVLEN",,"PE_SR","PE","SR","PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
             "GNOMAD","GNOMAD_AC","GNOMAD_TYPE","GNOMAD_IDS","GNOMAD_BC1","GNOMAD_BC2",
             "PCAWG","PCAWG_SUP","PCAWG_TYPE","PCAWG_IDS","PCAWG_BC1","PCAWG_BC2",
             "SOMATIC","SOMATIC_TYPE","SOMATIC_IDS");
