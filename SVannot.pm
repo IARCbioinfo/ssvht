@@ -24,6 +24,172 @@ sub new{
 }
 
 
+#General function to add annotations in BED format
+sub annot_with_bed_file{
+  my $self=shift;
+  my $bed=shift; #BED FILE
+  my $target=shift; #SOMATICS calls
+  my $type=shift; #The type of features stored in the BED file
+  my $delta=shift;#delta around breakpoints
+  #we build the tree from the bedfile
+  my $tree=$self->_build_interval_tree_bed($bed);
+  #we start the search
+  my $total_vars=0;
+  my $total_annotations=0;
+  #we compute the overlaps with the given target calls
+  foreach my $item (@{$target->{entries}}){
+    next if($item->{info}->{ALIVE} == 0);
+    my ($brk1,$brk2)=_get_breakpoints($item);
+    $total_vars++;
+    #add delta to breakpoints
+    my $rb1a=$brk1->{start}-$delta/2;
+    my $rb1b=$brk1->{stop}+$delta/2;
+    #fetch results from the tree
+    my $rbk1=$tree->fetch($rb1a,$rb1b);
+   #print Dumper(@$rbk1);
+    my $rb2a=$brk2->{start}-$delta/2;
+    my $rb2b=$brk2->{stop}+$delta/2;
+    #fecth the result from the tree for the second breakpoint
+    my $rbk2=$tree->fetch($rb2a,$rb2b);
+    #we filter the breakpoints considering the intervaltree construction, which ignore the chromosome
+    my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
+    #next if(scalar(@$fr1) ==0 and scalar(@$fr2) == 0);
+    #print Dumper($item);
+    #print Dumper($fr1);
+    #print Dumper($fr2);
+    #binary features
+    if($type eq "COSMIC_GENE" or $type eq "CENTROMER" or $type eq "EXON"){
+      if(scalar(@$fr1) ==0 and scalar(@$fr2) == 0){
+       $item->{info}->{$type}=0;
+     }else{
+        #mean that the variant overlap one of the features
+        $item->{info}->{$type}=1;
+     }
+    }
+
+    if($type eq "CONSERVATION"){
+      $item->{info}->{$type."_BC1"}=0;
+      $item->{info}->{$type."_BC2"}=0;
+      if(scalar(@$fr1) > 0){
+          $item->{info}->{$type."_BC1"}=@$fr1[0]->{CONSERVATION};
+      }
+      if(scalar(@$fr2) > 0){
+          $item->{info}->{$type."_BC2"}=@$fr2[0]->{CONSERVATION};
+      }
+    }
+
+    if($type eq "CNV"){
+      #we mark the diploid state
+      $item->{info}->{$type."_TCN1"}=2;
+      $item->{info}->{$type."_TCN2"}=2;
+      #tumor cell fraction equal to 0 by default
+      $item->{info}->{$type."_CF1"}=0;
+      $item->{info}->{$type."_CF2"}=0;
+
+      if(scalar(@$fr1) > 0){
+          $item->{info}->{$type."_TCN1"}=@$fr1[0]->{tcn};
+          $item->{info}->{$type."_CF1"}=@$fr1[0]->{cf};
+          #we ask for missing values
+          if($item->{info}->{$type."_TCN1"} eq "NA"){
+            $item->{info}->{$type."_TCN1"}=2;
+          }
+          if($item->{info}->{$type."_CF1"} eq "NA"){
+            $item->{info}->{$type."_CF1"}=0;
+          }
+      }
+      if(scalar(@$fr2) > 0){
+          $item->{info}->{$type."_TCN2"}=@$fr2[0]->{tcn};
+          $item->{info}->{$type."_CF2"}=@$fr2[0]->{cf};
+          #we ask for missing values
+          if($item->{info}->{$type."_TCN2"} eq "NA"){
+            $item->{info}->{$type."_TCN2"}=2;
+          }
+          if($item->{info}->{$type."_CF2"} eq "NA"){
+            $item->{info}->{$type."_CF2"}=0;
+          }
+      }
+    }
+    #print Dumper($item->{info});
+
+  #CNV
+  #  {
+  #          'tcn' => '3',
+  #          'cf' => '0.564784893301864',
+  #          'chr' => 'chr1',
+  #          'name' => 'CNV'
+  #   }
+
+  #COSMIC
+  # $VAR1 = [
+  #        {
+  #          'chr' => 'chr5',
+  #          'name' => 'COSMIC_GENE',
+  #          'CGENE' => 'FLT4'
+  #        }
+  #      ];
+
+#CENTROMER
+#$VAR1 = [
+#          {
+#            'name' => 'CENTROMER',
+#            'chr' => 'chr1',
+#            'Name' => 'CENTROMER_chr1'
+#          }
+#        ];
+#conservation
+#$VAR1 = [
+#          {
+#            'CONSERVATION' => '7',
+#            'chr' => 'chr1',
+#            'name' => '100way'
+#          }
+#        ];
+
+#exon
+#$VAR1 = [
+#          {
+#            'chr' => 'chr4',
+#            'name' => 'exon',
+#            'NAME' => 'ENSE00002029308.1'
+#          }
+#        ];
+
+  }
+
+
+}
+
+#build the intervaltree from a bedfile
+sub  _build_interval_tree_bed{
+  my $self=shift;
+  my $bed_file=shift;
+  #we create the interval tree for storing the break points of each SV
+  my $tree = Set::IntervalTree->new;
+  my $i=0;
+  open(BED,$bed_file) or die "Cannot open bed $bed_file\n";
+  while(my $line=<BED>){
+     chomp $line;
+     #other migth be a key=value, separated by ;
+     my ($chr, $start, $stop, $name, $other)=split("\t",$line);
+     #we check that we can store the features
+     if(abs($start-$stop)==0){
+        print $line." start equal to stop\n";
+     }else{
+       #insert breakpoint 1 into the intervalTree
+       my $tags=();
+       foreach my $pair (split(";",$other)){
+         my ($k,$v)=split("=",$pair);
+         $tags->{$k}=$v;
+       }
+       $tree->insert({chr=>$chr,name=>$name,%{$tags}},$start,$stop);
+     }
+  }
+  #we close the BED file
+  close(BED);
+  return $tree;
+}
+
+
 #ask context for breakpoint1 and breakpoint2 def:10kb
 sub _get_context_sv{
     my $tree=shift;

@@ -14,13 +14,17 @@ use SVannot;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <vcf_tumor>  -b <pon_vcf> -c <GNOMAD.vcf> -d <PCAWG.vcf> -e <CNV-READS> -s <Somatic.vcf> -p <prefix>\n";
+  print "$0 usage : -a <vcf_tumor> -b <pon_vcf>
+                    -c <GNOMAD.vcf> -d <PCAWG.vcf>
+                    -e <CNV-READS> -s <Somatic.vcf>
+                    -x <list_bed_files.txt> -p <prefix>\n";
    print "Error in use\n";
    exit 1;
 }
 
+
 my %opts = ();
-getopts( "a:b:c:d:e:s:p:", \%opts );
+getopts( "a:b:c:d:e:s:x:p:", \%opts );
 if ( !defined $opts{a} or !defined $opts{p}) {
    usage;
 }
@@ -72,7 +76,14 @@ $pcawg->norm_svs(0);
 $sva->annot_pcawg_sv($pcawg,$target,$ftype,$fdelta);
 $pcawg=();#we free the memory of the variable
 #$sva->annot_breapoint_coverage();
-#print the matrix to train the RF tool
-$target->print_matrix($opts{p});
 #annoted COSMIC SVs are of low quality and were replaced by PCAWG
 #$sv->annotate_cosmic();
+open(BEDF,$opts{x}) or die "cannot open list of BED files\n";
+while(my $line=<BEDF>){
+  chomp $line;
+  my ($type,$fbed)=split("\t",$line);
+  $sva->annot_with_bed_file($fbed,$target,$type,100);
+}
+close(BEDF);
+#print the matrix to train the RF tool
+$target->print_matrix($opts{p});

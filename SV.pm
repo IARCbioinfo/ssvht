@@ -218,7 +218,8 @@ sub print_matrix{
   my @cols=("SVLEN",,"PE_SR","PE","SR","PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
             "GNOMAD","GNOMAD_AC","GNOMAD_TYPE","GNOMAD_IDS","GNOMAD_BC1","GNOMAD_BC2",
             "PCAWG","PCAWG_SUP","PCAWG_TYPE","PCAWG_IDS","PCAWG_BC1","PCAWG_BC2",
-            "SOMATIC","SOMATIC_TYPE","SOMATIC_IDS");
+            "SOMATIC","SOMATIC_TYPE","SOMATIC_IDS","COSMIC_GENE","CENTROMER","EXON",
+            "CONSERVATION_BC1","CONSERVATION_BC2","CNV_TCN1","CNV_TCN2","CNV_CF1","CNV_CF2");
 
   open(FILE,">".$prefix.".txt") or die "cannot open $prefix.txt file\n";
   print FILE join(" ","ID","CHROM","POS","TYPE",@cols)."\n";
