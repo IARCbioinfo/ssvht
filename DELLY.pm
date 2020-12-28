@@ -28,7 +28,7 @@ sub normalize_sv{
    my $self=shift;
    my $svobj=shift;
    foreach my $item (@{$svobj->{entries}}){
-
+     #print Dumper($item);
      $item->{info}->{SVMETHOD}="DELLY";
      #we ask for PE support
      if(!defined $item->{info}->{PE}){
@@ -47,6 +47,31 @@ sub normalize_sv{
             my $l=abs($item->{POS}-$item->{info}->{END});
             $item->{info}->{SVLEN}=$l;
      }
+     #we get genovars
+    # FORMAT	GT	Genotype
+#FORMAT	GL	Log10-scaled genotype likelihoods for RR
+#FORMAT	GQ	Genotype Quality
+#FORMAT	FT	Per-sample genotype filter
+#FORMAT	RC	Raw high-quality read counts or base counts for the SV
+#FORMAT	RCL	Raw high-quality read counts or base counts for the left control regio
+#FORMAT	RCR	Raw high-quality read counts or base counts for the right control regi
+#FORMAT	CN	Read-depth based copy-number estimate for autosomal sites
+#FORMAT	DR	# high-quality reference pairs
+#FORMAT	DV	# high-quality variant pairs
+#FORMAT	RR	# high-quality reference junction reads
+#FORMAT	RV	# high-quality variant junction reads
+     #print Dumper($item->{geno});
+     #print join(" ",$item->{geno}->[0]->{DV}[0],$item->{geno}->[0]->{RV}[0])."\n";
+     #for tumor-only samples there is only one genome
+     my $sv_sup=$item->{geno}->[0]->{DV}[0]+$item->{geno}->[0]->{RV}[0];
+     my $ref_sup=$item->{geno}->[0]->{DR}[0]+$item->{geno}->[0]->{RR}[0];
+      #we add total supporting reads for ref/alt
+      $item->{info}->{RFS}=$sv_sup+$ref_sup;
+      if($item->{info}->{RFS} == 0){
+        $item->{info}->{RFS}=1;
+      }
+      #we add AF
+      $item->{info}->{RAF}=($sv_sup)/($item->{info}->{RFS});
 
 
      #we change the BND type of DELLY to TRA = TRANSLOCATION

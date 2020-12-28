@@ -175,8 +175,8 @@ sub basic_filters{
       my $type=$item->{info}->{SVTYPE};
       #mark the variant as alive
       $item->{info}->{ALIVE}=1;
-
-      if($type ne "BND"){
+      #we do not filter by length BND or TRANSLOCATIONS
+      if($type ne "BND" and $type ne "TRA"){
             if(!defined $hchr->{$item->{CHROM}}){
                     $item->{info}->{ALIVE}=0;
                     $remove_by_chr++;
@@ -185,6 +185,7 @@ sub basic_filters{
             if($item->{info}->{SVLEN} < $min_len or $item->{info}->{SVLEN} > $max_len){
                   $remove_by_length++;
                   $item->{info}->{ALIVE}=0;
+                  #print Dumper($item);
             }
       }else{
             if(!defined $hchr->{$item->{CHROM}} or !defined $hchr->{$item->{info}->{CHR2}}){
@@ -219,7 +220,7 @@ sub print_matrix{
             "GNOMAD","GNOMAD_AC","GNOMAD_TYPE","GNOMAD_IDS","GNOMAD_BC1","GNOMAD_BC2",
             "PCAWG","PCAWG_SUP","PCAWG_TYPE","PCAWG_IDS","PCAWG_BC1","PCAWG_BC2",
             "SOMATIC","SOMATIC_TYPE","SOMATIC_IDS","COSMIC_GENE","CENTROMER","EXON",
-            "CONSERVATION_BC1","CONSERVATION_BC2","CNV_TCN1","CNV_TCN2","CNV_CF1","CNV_CF2");
+            "CONSERVATION_BC1","CONSERVATION_BC2","CNV_TCN1","CNV_TCN2","CNV_CF1","CNV_CF2","RAF","RFS");
 
   open(FILE,">".$prefix.".txt") or die "cannot open $prefix.txt file\n";
   print FILE join(" ","ID","CHROM","POS","TYPE",@cols)."\n";
