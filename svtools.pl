@@ -43,7 +43,7 @@ my $sva=new SVannot();
 #load the genotype information
 $target->norm_svs(1);#load genotype information
 #remove SVs shorter than 50 bp, matching to alternative chromosomes or with read support lower than 5
-$target->basic_filters(3,50,500000000);
+$target->basic_filters(5,50,500000000);
 
 #load somatic variants of the sample
 my $som = new SV($opts{s});

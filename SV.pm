@@ -185,7 +185,7 @@ sub basic_filters{
             if($item->{info}->{SVLEN} < $min_len or $item->{info}->{SVLEN} > $max_len){
                   $remove_by_length++;
                   $item->{info}->{ALIVE}=0;
-                  #print Dumper($item);
+                  # print Dumper($item);
             }
       }else{
             if(!defined $hchr->{$item->{CHROM}} or !defined $hchr->{$item->{info}->{CHR2}}){
@@ -198,6 +198,9 @@ sub basic_filters{
           $item->{info}->{ALIVE}=0;
           $remove_by_readsupport++;
       }
+
+
+
       $alive++ if($item->{info}->{ALIVE} > 0);
       #print join("\t",$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{PE},$item->{info}->{SR},$item->{info}->{SVTYPE},$item->{info}->{SVLEN},$item->{info}->{ALIVE})."\n";
     }
@@ -216,7 +219,7 @@ sub print_matrix{
   my $self=shift;
   my $prefix=shift;
 #SVlen PE_SR PE-support Split read support
-  my @cols=("SVLEN",,"PE_SR","PE","SR","PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
+  my @cols=("SVLEN","PE_SR","PE","SR","PON","PON_SUPP","PON_TYPE","PON_IDS","PON_BC1","PON_BC2",
             "GNOMAD","GNOMAD_AC","GNOMAD_TYPE","GNOMAD_IDS","GNOMAD_BC1","GNOMAD_BC2",
             "PCAWG","PCAWG_SUP","PCAWG_TYPE","PCAWG_IDS","PCAWG_BC1","PCAWG_BC2",
             "SOMATIC","SOMATIC_TYPE","SOMATIC_IDS","COSMIC_GENE","CENTROMER","EXON",
