@@ -115,15 +115,15 @@ sub _guess_caller{
      if($item->{info}->{SVMETHOD} =~m/DELLY/){
        #print "Delly2\n";
        $caller="DELLY2";
+     }elsif($item->{info}->{SVMETHOD} =~m/SURVIVOR/){
+        $caller="SURVIVOR";
      }elsif($item->{ID} =~m/Manta/){
        #print "Manta\n";
        $caller="Manta";
      }elsif(defined $item->{info}->{SCTG}){
        #print "SVaba\n";
        $caller="SVaba";
-     }elsif($item->{info}->{SVMETHOD} =~m/SURVIVOR/){
-        $caller="SURVIVOR";
-     }elsif(defined $item->{info}->{DBVARID}){
+          }elsif(defined $item->{info}->{DBVARID}){
          $caller="GNOMAD";
      }elsif($item->{info}->{SVMETHOD} =~m/PCAWG/){
         $caller="PCAWG";

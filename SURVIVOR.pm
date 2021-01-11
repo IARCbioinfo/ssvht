@@ -35,6 +35,7 @@ sub normalize_sv{
      #SURVIVOR pon
      if($type eq "TRA" or $type eq "BND"){
        $item->{info}->{POS2}=$item->{info}->{END};
+       #print Dumper($item);
      }
    }
 }
