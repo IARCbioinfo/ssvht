@@ -73,7 +73,7 @@ while(my $line=<VCF>){
           #my $t=$types->{$d[2]}->{type};
           $d[7]=~s/SVTYPE=BND//g;
           $d[7].=join(";","SVMETHOD=SVABA","SVTYPE=$t","SVLEN=$l","END=$e","CIPOS=-300,300;CIEND=-300,300");
-          if($t eq "TRA"){
+          if($t eq "BND"){
             my $p2=$types->{$d[2]}->{POS2};
             my $c2=$types->{$d[2]}->{CHR2};
             $d[7].=";CHR2=$c2;POS2=$p2";
