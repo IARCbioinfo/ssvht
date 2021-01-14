@@ -104,7 +104,7 @@ sub add_types{
          my $b1=parse_brackets($p1->{ALT});
          my $b2=parse_brackets($p2->{ALT});
 
-         my $type="TRA";
+         my $type="BND";
          my $svlen=0;
          # p1:(\w\].+\]) :1 p2:(\w\].+\]):1
          # p1:(\[.+\[\w) :2 p2:(\[.+\[\w):2
@@ -125,7 +125,7 @@ sub add_types{
             $svlen=abs($p1->{POS}-$p2->{POS})+1;
             $ins++;
         }else{
-           $type="TRA";
+           $type="BND";
            $svlen=0;
            $tra++;
         }
@@ -146,7 +146,7 @@ sub add_types{
          $hash->{$p1->{ID}}->{CHR2}=$p2->{CHROM};
          $hash->{$p1->{ID}}->{POS2}=$p2->{POS};
          $hash->{$p1->{ID}}->{END}=$p2->{POS};
-         if($type eq "TRA"){
+         if($type eq "BND"){
            $hash->{$p1->{ID}}->{END}=$p1->{POS}+1;
          }
       }elsif($part == 1){
