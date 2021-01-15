@@ -115,24 +115,30 @@ sub _guess_caller{
      if($item->{info}->{SVMETHOD} =~m/DELLY/){
        #print "Delly2\n";
        $caller="DELLY2";
+       last;
      }elsif($item->{info}->{SVMETHOD} =~m/SURVIVOR/){
         $caller="SURVIVOR";
+        last;
      }elsif($item->{ID} =~m/Manta/){
        #print "Manta\n";
        $caller="Manta";
+       last;
      }elsif(defined $item->{info}->{SCTG}){
        #print "SVaba\n";
        $caller="SVaba";
-          }elsif(defined $item->{info}->{DBVARID}){
+       last;
+     }elsif(defined $item->{info}->{DBVARID}){
          $caller="GNOMAD";
+         last;
      }elsif($item->{info}->{SVMETHOD} =~m/PCAWG/){
         $caller="PCAWG";
+        last;
      }else{
        print "Unknow caller\n";
      }
   }
 
-  #we
+  #we return the proper caller
   my $tool=();
   if($caller eq "DELLY2"){
     $tool = new DELLY();
