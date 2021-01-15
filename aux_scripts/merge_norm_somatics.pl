@@ -84,7 +84,7 @@ if($line=~m/#/){
 
 
 if($t_som ne $t_som_p){
-  print STDERR "ERROR: not all somatics were printed [$t_som, $t_som_p]\n";
+  print STDERR "ERROR: not all somatics were printed  [$opts{b}:$t_som, $opts{a}:$t_som_p]\n";
 }else{
   print STDERR "All Somatics were print: Total sommatics $t_som and total printed $t_som_p\n";
 }
