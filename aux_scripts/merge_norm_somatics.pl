@@ -43,6 +43,7 @@ while(my $line=<VCFB>){
   my $tmp=();
   $tmp->{CHR}=$d[0];
   $tmp->{POS}=$d[1];
+  $tmp->{TYPE}="SOM";
   $d[2].=":SOM";
   $tmp->{line}=join("\t",@d[0 .. 8],$d[10]);
   push(@somatics,$tmp);
@@ -51,7 +52,7 @@ while(my $line=<VCFB>){
 }
 
 
-my $cs=shift(@somatics);
+#my $cs=shift(@somatics);
 my $t_som_p=0;
 
 open(VCFA, $opts{a}) or die "cannot open VCF file $opts{a}\n";
@@ -72,14 +73,20 @@ if($line=~m/#/){
   #print $line."\n";
   my @d=split("\t",$line);
   $d[2].=":GERM";
-  while($d[0] eq $cs->{CHR} and $cs->{POS} <= $d[1]){
-        print $cs->{line}."\n";
-        $cs=shift(@somatics);
-        $t_som_p++;
-  }
-  print join("\t",@d[0 .. 8],$d[10])."\n";
+  my $tmp=();
+  $tmp->{CHR}=$d[0];
+  $tmp->{POS}=$d[1];
+  $tmp->{TYPE}="GERM";
+  $tmp->{line}=join("\t",@d[0 .. 8],$d[10]);
+  push(@somatics,$tmp);
 }
 
+}
+
+#we sort the array and print the merged files
+foreach my $l (sort {$a->{CHR} cmp $b->{CHR} || $a->{POS} <=> $b->{POS}} @somatics){
+  print $l->{line}."\n";
+  $t_som_p++ if($l->{TYPE} eq "SOM");
 }
 
 
