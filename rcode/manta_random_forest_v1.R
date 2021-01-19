@@ -96,9 +96,9 @@ predictions <- data.frame(
 )  
 
 #no match PON, hit an exon , read support > 5,and have somatic prob >0.5
-ea=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.5 & predictions$PE_SR >=5 & predictions$EXON==1,]
+ea=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.5 & predictions$PE_SR >=5 & predictions$EXON==1 & predictions$CENTROMER == 0,]
 #no match PON, do not hit an exon, read support > 5 , and have somatic prob > 0.75
-ia=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.75 & predictions$PE_SR >=5 & predictions$EXON==0,]
+ia=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.75 & predictions$PE_SR >=5 & predictions$EXON==0 & predictions$CENTROMER == 0,]
 a=rbind(ea,ia)
 #sort(summary(a$TUMOR_ID))
 

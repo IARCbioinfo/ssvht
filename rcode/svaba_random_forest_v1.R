@@ -104,11 +104,16 @@ predictions <- data.frame(
   Predicted.prob = predicted.prob
 )  
 
+#black listed zones for SVaba, the others callers use a similar approach
+
 #no match PON, hit an exon , read support > 5,and have somatic prob >0.5 & 
-ea=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.5 & predictions$PE_SR >=5 & predictions$EXON==1 & predictions$RAF < 1,]
+ea=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.5 & predictions$PE_SR >=5 & predictions$EXON==1 & predictions$RAF < 1 & predictions$CENTROMER == 0,]
 #no match PON, do not hit an exon, read support > 5 , and have somatic prob > 0.75
-ia=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.75 & predictions$PE_SR >=5 & predictions$EXON==0 & predictions$RAF < 1,]
+ia=predictions[predictions$PON==0 & predictions$Predicted.prob.1 > 0.75 & predictions$PE_SR >=5 & predictions$EXON==0 & predictions$RAF < 1 & predictions$CENTROMER == 0,]
 a=rbind(ea,ia)
+
+
+
 #sort(summary(a$TUMOR_ID))
 
 #sort(summary(a$Tumor_ID))
@@ -131,4 +136,3 @@ write.table(
 
 #we save the sesion information
 writeLines(capture.output(sessionInfo()), paste("svaba_R_sessionInfo.txt",sep=""))
-
