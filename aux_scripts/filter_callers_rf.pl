@@ -48,6 +48,7 @@ while(my $line=<VCF>){
   }else{
     #print $line."\n";
     my @d=split("\t",$line);
+    #print Dumper(@d);
     next if (!defined $sv_pass->{$d[2]});
     #print $line."\n";
     my ($tags)=parse_tags($d[7]);
@@ -94,6 +95,8 @@ sub load_rf_calls{
       }
   }
   close(RF);
+
+  #print Dumper($hash);
   return $hash;
 }
 
@@ -197,6 +200,33 @@ if($caller =~m/manta/){
   return $ctg_h.$hmanta;
 }
 
+my $hsvaba=<<EOF;
+##INFO=<ID=RF_SP,Number=1,Type=Float,Description="Random forest probability of SV class somatic">
+##INFO=<ID=RAF,Number=1,Type=Float,Description="Allele Frequency of the SV">
+##INFO=<ID=RFS,Number=1,Type=Integer,Description="Read coverage of SV">
+##INFO=<ID=CONSERVATION_BC1,Number=1,Type=Integer,Description="CONSERVATION breakpoint 1">
+##INFO=<ID=CONSERVATION_BC2,Number=1,Type=Integer,Description="CONSERVATION breakpoint 2">
+##INFO=<ID=GNOMAD_BC1,Number=1,Type=Integer,Description="Number of GNOMAD SVs around breakpoint 1">
+##INFO=<ID=GNOMAD_BC2,Number=1,Type=Integer,Description="Number of  GNOMAD SVs around breakpoint 2">
+##INFO=<ID=GNOMAD_AC,Number=1,Type=Integer,Description="GNOMAD minor allele count">
+##INFO=<ID=PCAWG_BC1,Number=1,Type=Integer,Description="Number of  PCAWG SVs around breakpoint 1">
+##INFO=<ID=PCAWG_BC2,Number=1,Type=Integer,Description="Number of  PCAWG SVs around breakpoint 2">
+##INFO=<ID=PON_BC1,Number=1,Type=Integer,Description="Number of PON SVs around breakpoint 1">
+##INFO=<ID=PON_BC2,Number=1,Type=Integer,Description="Number of PON SVs around breakpoint 2">
+##INFO=<ID=CNV_TCN1,Number=1,Type=Integer,Description="Facets total Copy number on breakpoint 1">
+##INFO=<ID=CNV_TCN2,Number=1,Type=Integer,Description="Facets total Copy number on breakpoint 2">
+##INFO=<ID=CNV_CF1,Number=1,Type=Float,Description="Facets cellular fraction on breakpoint 1">
+##INFO=<ID=CNV_CF2,Number=1,Type=Float,Description="Facets cellular fraction on breakpoint 2">
+##INFO=<ID=EXON,Number=1,Type=Integer,Description="SV hit an EXON">
+##INFO=<ID=COSMIC_GENE,Number=1,Type=Integer,Description="SV hit an COSMIC gene">
+##INFO=<ID=PE_SR,Number=1,Type=Integer,Description="Number of reads supporting the SV (pair-end+split)">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="SV length">
+EOF
+
+#header for manta
+if($caller =~m/svaba/){
+  return $ctg_h.$hsvaba;
+}
 
 
 }
