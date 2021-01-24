@@ -20,7 +20,7 @@ if ( !defined $opts{a}  or !defined $opts{b} or !defined $opts{c} or !defined $o
    usage;
 }
 
-my $SURVIVOR="~/Programs/SURVIVOR/Debug/SURVIVOR";
+my $SURVIVOR="SURVIVOR";
 
 #system(@args) == 0
 #    or die "system @args failed: $?";
@@ -133,9 +133,14 @@ open(OUT,">$opts{p}.integration.vcf") or die "cannot create $opts{p}.integration
         print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
 
 
-      }elsif($trsup >=10){
+      }elsif($trsup >=15){
+	#if($geno3 eq "NaN"){
         $d[7]="CALLERS=".join(",",@caller).";PES=$max_pe_sr;".$d[7];
         print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
+	#}elsif($trsup >= 20){
+        #$d[7]="CALLERS=".join(",",@caller).";PES=$max_pe_sr;".$d[7];
+        #print OUT join("\t",@d[0..7],"ID:PE_SR:RF_SP:SVT:SVL:RAF:RFS",join(":",@f_manta),join(":",@f_delly),join(":",@f_svaba))."\n";
+	#}
 
       }
      }
