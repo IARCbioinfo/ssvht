@@ -46,7 +46,7 @@ foreach my $e (@{$cds}[10 .. 20]){
 #we can load a list or a single file
 open(VCF, $opts{b}) or die "cannot open VCF file\n";
 
-print join("\t","TumorID","CHROM","POS",
+print join("\t","TumorID","SV_ID","CHROM","POS",
                       "SVTYPE","PES",
                       "STRANDS","SVLEN",
                       "CHR2","END",
@@ -193,7 +193,7 @@ while(my $line=<VCF>){
 
         print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},
                               $item->{info}->{SVTYPE},$item->{info}->{PES},
-                              $item->{info}->{STRANDS},$item->{SVLEN},
+                              $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                               $item->{info}->{CHR2},$item->{info}->{END},
                               $item->{info}->{SUPP}, $item->{info}->{CALLERS},@v1,@v2,$h_g,$h_cds,$h_e,$h_cds_100,$h_e_100)."\n";
 
