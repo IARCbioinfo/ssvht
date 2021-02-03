@@ -11,13 +11,13 @@ use Set::IntervalTree;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <gtf file>  -b <vcf>  -c <prefix>\n";
+   print "$0 usage : -a <gtf file>  -b <vcf>  -s <tumorID>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:c:", \%opts );
+getopts( "a:b:s:", \%opts );
 if ( !defined $opts{a}  ) {
    usage;
 }
@@ -191,7 +191,7 @@ while(my $line=<VCF>){
         push(@v2,"NA");
       }
 
-        print join("\t","TumorID",$item->{ID},$item->{CHROM},$item->{POS},
+        print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},
                               $item->{info}->{SVTYPE},$item->{info}->{PES},
                               $item->{info}->{STRANDS},$item->{SVLEN},
                               $item->{info}->{CHR2},$item->{info}->{END},
