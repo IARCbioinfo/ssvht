@@ -11,24 +11,146 @@ use Set::IntervalTree;
 use strict;
 
 sub usage {
-   print "$0 usage : -a <gtf file>  -b <vcf>  -s <tumorID>\n";
+   print "$0 usage : -a <gtf file>  -f <fragile_sites> -r <rna_fusions> -b <vcf>  -s <tumorID>\n";
    print "Error in use\n";
    exit 1;
 }
 
 my %opts = ();
-getopts( "a:b:s:", \%opts );
+getopts( "a:b:s:f:r:", \%opts );
 if ( !defined $opts{a}  ) {
    usage;
 }
 
+my ($frs)=load_fragile_sites($opts{f});
+#print Dumper($frs);
+my $t_frs=_build_interval_tree_bed($frs);
+#we load the fusions of the sample
+my ($f_table,$fbed)=load_mRNA_fusions($opts{r},$opts{s});
+
+#function that create the exons/introns with annotations to CDS/UTRs etc
+my ($genes,$exons,$introns)=load_exons_genes($opts{a});
+my $t_exons=_build_interval_tree_bed($exons);
+my $t_introns=_build_interval_tree_bed($introns);
+my $t_fus=_build_interval_tree_bed($fbed);
+
+
+# we iterate the VCF file to generate the table
+open(VCF, $opts{b}) or die "cannot open VCF file\n";
+
+#print join("\t","TumorID","SV_ID","CHROM","POS",
+#                      "SVTYPE","PES",
+#                      "STRANDS","SVLEN",
+#                      "CHR2","END",
+#                      "SUPP","CALLERS",
+#                      "ENS_BRK1", "GN_BRK1", "GT_BRK1", "CDS_BRK1", "EXON_BRK1","CDS_BRK1_D100", "EXON_BRK1_D100",
+#                      "ENS_BRK2", "GN_BRK2", "GT_BRK1","CDS_BRK2", "EXON_BRK2","CDS_BRK2_D100", "EXON_BRK2_D100",
+#                      "HIT_GENE","HIT_CDS","HIT_EXON","HIT_CDS_D100","HIT_EXON_D100")."\n";
+
+while(my $line=<VCF>){
+  next if($line=~m/^#/);
+  chomp $line;
+  my $item=();
+  $item->{el}=$line;
+  ($item)=_create_entry($item);
+  my $type=$item->{info}->{SVTYPE};
+  #SURVIVOR pon
+  if($type eq "TRA" or $type eq "BND"){
+  $item->{info}->{POS2}=$item->{info}->{END};
+  #print Dumper($item);
+  }
+
+  # we match the exons
+  my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,1);
+  #we get values from exons
+  if(scalar(@$exons_o1)>0){
+      
+  }
+
+
+
+  # we match the introns
+  my ($intron_o1,$intron_o2)=overlap_feats($item, $t_introns,1);
+  #we match the fragile sites
+  my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs);
+  # we match the mRNA fusions
+  my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus);
+
+
+
+
+  #print Dumper($exon_o1);
+  #print Dumper($exon_o2);
+  #print Dumper($intron_o1);
+  #print Dumper($intron_o2);
+  #print Dumper($fra_o1);
+  #print Dumper($fra_o2);
+  #print Dumper($rna_o1);
+  #print Dumper($rna_o2);
+}
+
+
+
+
+
+
+#my $t_genes=_build_interval_tree_bed($genes);
+
+
+=bla
+foreach my $e (@{$fbed}[1 .. 6]){
+    my $results = $t_fus->fetch($e->{start},$e->{stop});
+    foreach my $r (@$results){
+        my $re=@$f_table[$r->{index}];
+        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{gene1},$re->{gene2},$re->{breakpoint1},$re->{breakpoint2},
+	$re->{read_support},$e->{start},$e->{stop})."\n"
+    }
+   print Dumper($results);
+}
+
+
+#check the exons interval tree
+foreach my $e (@{$exons}[10 .. 20]){
+    my $results = $t_exons->fetch($e->{start},$e->{stop});
+    #print Dumper($results);
+    foreach my $r (@$results){
+        my $re=@$exons[$r->{index}];
+        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{tags}->{gene_type},$e->{start},$e->{stop})."\n"
+    }
+    print "\n";
+}
+
+#check the introns interval tree
+foreach my $e (@{$introns}[10 .. 20]){
+    my $results = $t_introns->fetch($e->{start},$e->{stop});
+    #print Dumper($results);
+    foreach my $r (@$results){
+        my $re=@$introns[$r->{index}];
+        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{gene_id},$e->{start},$e->{stop})."\n"
+    }
+    print "\n";
+}
+=cut
+#we load other databases
+
+                            #this get the breakpoints considering the CIPOS and CIEND post for SVs
+                            #my ($b1,$b2)=_get_breakpoints($item);
+
+
+
+#exit 0;
+=bla
+my $utrs=load_type($opts{a},"UTR");
+my $t_utr=_build_interval_tree_bed($utrs);
+print Dumper($utrs);
 #load annotation data and store it in the interval tree
-my $exons=load_type($opts{a},"exon");
-my $t_exon=_build_interval_tree_bed($exons);
 my $cds=load_type($opts{a},"CDS");
 my $t_cds=_build_interval_tree_bed($cds);
+my $exons=load_type($opts{a},"exon");
+my $t_exon=_build_interval_tree_bed($exons);
 my $genes=load_type($opts{a},"gene");
 my $t_gene=_build_interval_tree_bed($genes);
+
 
 
 =bla
@@ -41,7 +163,7 @@ foreach my $e (@{$cds}[10 .. 20]){
     }
     print "\n";
 }
-=cut
+#=cut
 #we load the VCF file and match the data
 #we can load a list or a single file
 open(VCF, $opts{b}) or die "cannot open VCF file\n";
@@ -199,6 +321,95 @@ while(my $line=<VCF>){
 
       #print Dumper($item);
 }
+=cut
+
+#We load the fusions from arriba and
+sub load_mRNA_fusions{
+      my ($file,$s)=@_;
+	open(FILE,$file) or die "cannot open file $file\n";
+	#we read the header
+	my $h=<FILE>;
+	chomp $h;
+	my @values=split("\t",$h);
+	my $index=0;
+	my $fbed=();
+	my $fusions=();
+	while(my $line=<FILE>){
+	    chomp $line;
+            my @data=split /\t/,$line;
+	    next if($data[1] ne $s);
+	    my $tmp=();
+	    for(my $i=0;$i<$#values; $i++){
+		$tmp->{$values[$i]}=$data[$i];
+	    }
+	    $tmp->{read_support}=$tmp->{split_reads1}+$tmp->{split_reads2}+$tmp->{discordant_mates};
+	    $tmp->{index}=$index;
+	    #we drops some features
+	    $tmp->{fusion_transcript}="";
+	    $tmp->{peptide_sequence}="";
+	    #$tmp->{name}=join("__",$tmp->{})
+	    $tmp->{name}=join("__",$tmp->{gene1},$tmp->{gene2});
+	    my $tmp_b1=();
+	       my ($a,$b)=split(":",$tmp->{breakpoint1});
+		  $tmp_b1->{chr}="chr".$a;
+		  $tmp_b1->{start}=$b;
+		  $tmp_b1->{stop}=$b+1;
+		  $tmp_b1->{index}=$index;
+		  #$tmp_b1->{name}=join("__",$tmp->{gene1},$tmp->{gene2});
+		  $tmp_b1->{name}=$tmp->{gene1};
+	        #we split the breakpoint2
+		($a,$b)=split(":",$tmp->{breakpoint2});
+	    my $tmp_b2=();
+		  $tmp_b2->{chr}="chr".$a;
+		  $tmp_b2->{start}=$b;
+		  $tmp_b2->{stop}=$b+1;
+		  $tmp_b2->{index}=$index;
+		  #$tmp_b2->{name}=join("__",$tmp->{gene1},$tmp->{gene2});
+		  $tmp_b2->{name}=$tmp->{gene2};
+
+		push(@$fusions, $tmp);
+		push(@$fbed,$tmp_b1);
+		push(@$fbed,$tmp_b2);
+	    $index++;
+	}
+	return ($fusions,$fbed);
+}
+
+
+sub load_fragile_sites{
+    my ($sites)=@_;
+    open(FILE,$sites) or die "cannot open $sites\n";
+    my $frs=();
+    my $i=0;
+    #we load the fragile sites
+    while(my $line=<FILE>){
+      chomp $line;
+      my @d=split("\t",$line);
+      my $tmp=();
+      ($tmp->{chr},$tmp->{start},$tmp->{stop},
+      $tmp->{strand},$tmp->{type}) = ($d[0],$d[3],$d[4],$d[6],$d[2]);
+      foreach my $t(split(";",$d[8])){
+        my ($v,$v2)=split("=",$t);
+        $tmp->{tags}->{$v}=$v2;
+      }
+      $tmp->{name}=$tmp->{tags}->{name};
+      $tmp->{index}=$i;
+      if($tmp->{chr} eq "chrx"){
+        $tmp->{chr}="chrX";
+      }
+      $i++;
+      #there is a bad line in the file
+      #if($tmp->{start} > $tmp->{stop}){
+        #print $line."\n";
+        #print Dumper(@d);
+        #print $tmp->{start}." ".$tmp->{stop}."\n";
+      #}
+      push(@{$frs},$tmp);
+    }
+    #print Dumper($tmp);
+    #print Dumper($frs);
+    return ($frs);
+}
 
 
 sub get_results{
@@ -213,7 +424,6 @@ sub get_results{
           $hash->{GT}->{$re->{tags}->{"gene_type"}}++;
         }
         #print Dumper($re);
-
     }
     #print Dumper($hash);
     return $hash;
@@ -371,10 +581,183 @@ foreach my $e (@{$genes}[10 .. 20]){
     print "\n";
 }
 =cut
+#load the exons from the GTF files marking whether an exon is CDS, UTR and its associated gene
+sub load_exons_genes{
+    my ($file,$type)=@_;
+    open(GTF, "gzip -dc $file |") or die "cannot open file\n";
+    my $exons=(); #exons
+    my $genes=(); #gene features
+    my $exon2genes=(); #exon 2 gene
+    my $introns=();
+
+    while (my $line=<GTF>) {
+            next if($line=~m/^#/);
+            chomp $line;
+            my @d=split("\t",$line);
+            #we get the features and tags for each value
+            my $e=();
+            ($e->{chr},$e->{start},$e->{stop},
+            $e->{strand},$e->{type}) = ($d[0],$d[3],$d[4],$d[6],$d[2]);
+            #we parse the tags of the file
+            $e->{tags}=parse_tags($d[8]);
+            $e->{name}=$e->{tags}->{join("_",$d[2],"id")};
+            if($d[2] eq "CDS" or $d[2] eq "UTR"){
+              $e->{name}=$e->{tags}->{join("_","exon","id")};
+            }
+            #we skyp non exonic genes
+            if($d[2] eq "gene"){
+              $genes->{$e->{name}}=$e; #we save the gene information
+            }elsif($d[2] eq "exon"){
+              if(!defined $exons->{$e->{name}}){
+                $e->{CDS}=0;
+                $e->{UTR}=0;
+                $exons->{$e->{name}}=$e;
+
+              }
+            }elsif($d[2] eq "CDS"){
+              if(defined $exons->{$e->{name}}){
+                $exons->{$e->{name}}->{CDS}++;
+              }else{
+                print STDERR $e->{name}. "is not present on exon db\n";
+              }
+            }elsif($d[2] eq "UTR"){
+              if(defined $exons->{$e->{name}}){
+                $exons->{$e->{name}}->{UTR}++;
+              }else{
+                print STDERR $e->{name}. "is not present on exon db\n";
+              }
+            }
+    }
+    #print Dumper($exons);
+    #we sort the exons by chromosome, gene and position
+    my @sexons= sort {$exons->{$a}->{chr} cmp $exons->{$b}->{chr} ||
+                      $exons->{$a}->{tags}->{gene_id} cmp $exons->{$b}->{tags}->{gene_id} ||
+                      $exons->{$a}->{start} <=> $exons->{$b}->{start} } keys %{$exons};
+
+    #print Dumper(@sexons);
+    my $index_exon=0;
+    my $index_intron=0;
+    my $sorted_exons=();
+    my $gname=$exons->{$sexons[0]}->{tags}->{gene_id};
+    my $uniq_exons=();
+    foreach my $n(@sexons){
+      my $e=$exons->{$n};
+      my $g=$genes->{$e->{tags}->{gene_id}};#we get the gene
+      my $gl=abs($g->{start}-$g->{stop});
+      if($gname eq $g->{tags}->{gene_id}){
+        push(@$uniq_exons,$e);
+      }else{
+        #print join(" ",$gname,$g->{tags}->{gene_id});
+
+        my ($intron)=build_introns($uniq_exons,$genes);
+        if(defined $intron){
+            foreach my $in(@{$intron}){
+              $in->{index}=$index_intron;
+              $index_intron++;
+              push(@$introns,$in);
+            }
+        }else{
+          #genes with no introns
+          #print Dumper($intron);
+          #print STDERR $gname." do not have introns\n";
+        }
+        $gname=$g->{tags}->{gene_id};
+        $uniq_exons=();
+        push(@$uniq_exons,$e);
+      }
+      #my $g=$genes->{$e->{tags}->{gene_id}};#we get the gene
+      #print join(" ",$e->{chr},$e->{name},$e->{tags}->{gene_id},$e->{CDS},$e->{UTR},$e->{start},$e->{stop},$e->{strand},
+      #$g->{tags}->{gene_name},$g->{start},$g->{stop},$g->{strand},$g->{tags}->{gene_type})."\n";
+      $e->{index}=$index_exon;
+      $index_exon++;
+
+      push(@$sorted_exons,$e);
+    }
+
+
+    #we add the index to exons and introns
+    #we create the introns for each gene
+    #print Dumper($introns);
+    return ($genes,$sorted_exons,$introns);
+
+    #exit 0;
+    #we return the coordiantes for each gene
+
+}
+
+sub build_introns{
+    my ($uniq_e,$genes)=@_;
+    my $g=$genes->{@$uniq_e[0]->{tags}->{gene_id}};
+    my $l=abs($g->{start}-$g->{stop});
+    #we init the array with N
+    my @cigar=("N") x $l;
+    #print Dumper($uniq_e);
+    #print Dumper(@g_space);
+    #we mark all the exon sequence on the gene regions
+    foreach my $e(@$uniq_e){
+      my $se=$e->{start}-$g->{start};
+      my $ee=abs($e->{start}-$e->{stop});
+      #print join(" ",$se,$ee,$l)."\n";
+      for(my $i=$se;$i<=$se+$ee;$i++){
+        $cigar[$i]="E";
+      }
+    }
+    #we build the introns start/stop sequences
+    my $first=-1;
+    my $last=0;
+    #we assume that the gene start by a E
+    if($cigar[0] eq "N"){
+      print STDERR $g->{tags}->{gene_id}." Start with N\n";
+    }else{
+      #we have observed that is due to exons wiht start=stop
+      $cigar[0]="E";
+    }
+    #We check some conditions
+    if($cigar[$#cigar] eq "N"){
+      print STDERR $g->{tags}->{gene_id}." End with N\n";
+    }
+    my $introns=();
+    my $n=1;
+    for(my $i=1; $i <$l ; $i++){
+        if($cigar[$i] eq "E" and $cigar[$i-1] eq "N"){
+          my $tmp=();
+            $tmp->{start}=$g->{start}+$first+1;
+            #case of micro-introns of lenght 1 e.g ENE
+            if($last == 0){
+                $tmp->{stop}=$g->{start}+$first+1;
+            }else{
+                $tmp->{stop}=$g->{start}+$first+$last;
+           }
+            $tmp->{gene_id}=$g->{tags}->{gene_id};
+            $tmp->{chr}=$g->{chr};
+            $tmp->{strand}=$g->{strand};
+            $tmp->{number}=$n;
+            $tmp->{name}=join("_",$g->{tags}->{gene_id},$n);
+            push(@{$introns},$tmp);
+            $n++;
+            #debug micro-introns
+          # if($tmp->{start} > $tmp->{stop}){
+          #      print join("",@cigar)."\n";
+          #      foreach(@{$introns}){
+          #          print join(" ",$_->{start},$_->{stop},$i,$first,$last,$l,$_->{g_id})."\n";
+          #     }
+          # }
+            #print join(" ","INTRON",$first,$last)."\n";
+        $first=-1; $last=0;
+      }elsif($cigar[$i] eq "N" and $first== -1){
+          $first=$i;
+        }elsif($cigar[$i] eq "N"){
+          $last++;
+        }
+    }
+    #print join("",@cigar)."\n";
+    #print Dumper($introns);
+    return ($introns);
+}
 
 #load different types of features from GTF file
 sub load_type{
-      my ($file,$type)=@_;
+        my ($file,$type)=@_;
   open(GTF, "gzip -dc $file |") or die "cannot open file\n";
   #exonic regions of protein coding genes
   my $exons=();
@@ -394,7 +777,7 @@ sub load_type{
           #we parse the tags of the file
           $e->{tags}=parse_tags($d[8]);
           $e->{name}=$e->{tags}->{join("_",$type,"id")};
-          if($type eq "CDS"){
+          if($type eq "CDS" or $type eq "UTR"){
             $e->{name}=$e->{tags}->{join("_","exon","id")};
           }
           #just a warning
@@ -430,6 +813,7 @@ foreach my $e (@{$bed_file}){
         print STDERR "start equall to stop\n";
         #$line." start equal to stop\n";
       }else{
+        #print join(" ",$e->{name},$e->{start},$e->{stop})."\n";
         $tree->insert({chr=>$e->{chr},name=>$e->{name},index=>$e->{index}},$e->{start},$e->{stop});
       }
  }
