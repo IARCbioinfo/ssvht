@@ -46,10 +46,7 @@ open(VCF, $opts{b}) or die "cannot open VCF file\n";
 #                      "ENS_BRK1", "GN_BRK1", "GT_BRK1", "CDS_BRK1", "EXON_BRK1","CDS_BRK1_D100", "EXON_BRK1_D100",
 #                      "ENS_BRK2", "GN_BRK2", "GT_BRK1","CDS_BRK2", "EXON_BRK2","CDS_BRK2_D100", "EXON_BRK2_D100",
 #                      "HIT_GENE","HIT_CDS","HIT_EXON","HIT_CDS_D100","HIT_EXON_D100")."\n";
-my $n_exons_b1=0;
-my $n_exons_b2=0;
-my $n_introns_b1=0;
-my $n_introns_b2=0;
+
 
 while(my $line=<VCF>){
   next if($line=~m/^#/);
@@ -64,6 +61,10 @@ while(my $line=<VCF>){
   #print Dumper($item);
   }
 
+  my $n_exons_b1=0;
+  my $n_exons_b2=0;
+  my $n_introns_b1=0;
+  my $n_introns_b2=0;
   # we match the exons
   my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,1);
 
@@ -169,8 +170,6 @@ while(my $line=<VCF>){
   #print "Fusions\n\n";
   #print Dumper($rna_o1);
   #print Dumper($rna_o2);
-
-
 }
 
 sub filter_fragile_results{
