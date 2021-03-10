@@ -26,7 +26,7 @@ my ($frs)=load_fragile_sites($opts{f});
 #print Dumper($frs);
 my $t_frs=_build_interval_tree_bed($frs);
 #we load the fusions of the sample
-my ($f_table,$fbed)=load_mRNA_fusions($opts{r},$opts{s});
+my ($f_table,$fbed,$fhash)=load_mRNA_fusions($opts{r},$opts{s});
 
 #function that create the exons/introns with annotations to CDS/UTRs etc
 my ($genes,$exons,$introns)=load_exons_genes($opts{a});
@@ -46,6 +46,10 @@ open(VCF, $opts{b}) or die "cannot open VCF file\n";
 #                      "ENS_BRK1", "GN_BRK1", "GT_BRK1", "CDS_BRK1", "EXON_BRK1","CDS_BRK1_D100", "EXON_BRK1_D100",
 #                      "ENS_BRK2", "GN_BRK2", "GT_BRK1","CDS_BRK2", "EXON_BRK2","CDS_BRK2_D100", "EXON_BRK2_D100",
 #                      "HIT_GENE","HIT_CDS","HIT_EXON","HIT_CDS_D100","HIT_EXON_D100")."\n";
+my $n_exons_b1=0;
+my $n_exons_b2=0;
+my $n_introns_b1=0;
+my $n_introns_b2=0;
 
 while(my $line=<VCF>){
   next if($line=~m/^#/);
@@ -62,38 +66,168 @@ while(my $line=<VCF>){
 
   # we match the exons
   my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,1);
-  #we get values from exons
-  if(scalar(@$exons_o1)>0){
-      
-  }
-
-
 
   # we match the introns
   my ($intron_o1,$intron_o2)=overlap_feats($item, $t_introns,1);
   #we match the fragile sites
-  my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs);
+  my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs,1);
+
   # we match the mRNA fusions
-  my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus);
+  my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus,10000);
 
 
+  #print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+  #                      $item->{info}->{SVTYPE},$item->{info}->{PES},
+  #                      $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+  #                      $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+  #                      $item->{info}->{SUPP}, $item->{info}->{CALLERS})."\n\n\n";
 
-
+  #print "Exons\n\n";
   #print Dumper($exon_o1);
-  #print Dumper($exon_o2);
+  my @re1=();
+  if(scalar(@$exon_o1)>0){
+      my ($fe1)=filter_exons_results($exon_o1,$exons);
+     foreach my $e1 (@{$fe1}){
+         push(@re1,$e1->{name},$e1->{CDS},$e1->{UTR},
+              $e1->{chr},$e1->{start},$e1->{stop},$e1->{strand},
+              $e1->{tags}->{exon_number},$e1->{tags}->{gene_id},$e1->{tags}->{gene_name},$e1->{tags}->{gene_type});
+              #we broke the exons
+              last;
+     }
+     $n_exons_b1=scalar(@{$fe1});
+  }else{
+      @re1=("NA") x 11;
+  }
+
+  my @re2=();
+  if(scalar(@$exon_o2)>0){
+      my ($fe2)=filter_exons_results($exon_o2,$exons);
+      foreach my $e1 (@{$fe2}){
+          push(@re2,$e1->{name},$e1->{CDS},$e1->{UTR},
+               $e1->{chr},$e1->{start},$e1->{stop},$e1->{strand},
+               $e1->{tags}->{exon_number},$e1->{tags}->{gene_id},$e1->{tags}->{gene_name},$e1->{tags}->{gene_type});
+               #we broke the exons
+               last;
+      }
+      $n_exons_b2=scalar(@{$fe2});
+      #print Dumper($fe2);
+  }else{
+    @re2=("NA") x 11;
+  }
+  #print join("\t",@re1)."\n";
+  #print join("\t",@re2)."\n";
+
+#filter_exons_results($exon_o2,$exons);
+
+  #print "Introns\n\n";
   #print Dumper($intron_o1);
-  #print Dumper($intron_o2);
-  #print Dumper($fra_o1);
-  #print Dumper($fra_o2);
+  if(scalar(@$exon_o1)==0){
+          my ($i1)=filter_introns_results($intron_o1,$introns,$genes);
+          #print Dumper($i1);
+          $n_introns_b1= defined($i1) ? scalar(@$i1):0;
+          #print Dumper($i1);
+    #'chr' => 'chr19',
+   #'stop' => 11312138,
+   #'number' => 6,
+   #'name' => 'ENSG00000130167.13_6',
+   #'gene_id' => 'ENSG00000130167.13',
+   #'index' => 496,
+   #'start' => 11308063,
+   #'gene_name' => 'TSPAN16',
+   #'strand' => '+'
+          #my @tmp=();
+
+          #foreach my $i (@$i1){
+          #     push(@tmp,join(":",$i->{chr},$i->{start},$i->{stop},$i->{strand},$i->{number},$i->{gene_id},$i->{gene_name}));
+          #}
+
+  }
+  if(scalar(@$exon_o2)==0){
+          my ($i2)=filter_introns_results($intron_o2,$introns,$genes);
+          #$n_introns_b2=scalar(@$i2);
+          $n_introns_b2= defined($i2) ? scalar(@$i2):0;
+          #print Dumper($i2);
+  }
+
+  #print "Fragile\n\n";
+  my @fra_s1=();
+  if(scalar(@{$fra_o1}) > 0){
+        my ($fra1)=filter_fragile_results($fra_o1,$frs);
+        push(@fra_s1,$fra1->{chr},$fra1->{start},$fra1->{stop},$fra1->{name},$fra1->{tags}->{Inducer},$fra1->{tags}->{frequency});
+  }else{
+    @fra_s1=("NA") x 6;
+  }
+  my @fra_s2=();
+  if(scalar(@{$fra_o2}) > 0){
+        my ($fra2)=filter_fragile_results($fra_o2,$frs);
+        push(@fra_s2,$fra2->{chr},$fra2->{start},$fra2->{stop},$fra2->{name},$fra2->{tags}->{Inducer},$fra2->{tags}->{frequency});
+  }else{
+    @fra_s2=("NA") x 6;
+  }
+  #print join("\t",@fra_s1,@fra_s2)."\n";
+  print join("\t",$opts{s},$item->{ID},$n_exons_b1,$n_exons_b2,$n_introns_b1,$n_introns_b2)."\n";
+  #print "Fusions\n\n";
   #print Dumper($rna_o1);
   #print Dumper($rna_o2);
+
+
 }
 
+sub filter_fragile_results{
+  my ($res, $db)=@_;
+  my @hash=();
+  my $index=0;
+  my $i=0;
+  foreach my $r (@$res){
+        my $re=@$db[$r->{index}];
+        #print Dumper($re);
+        push(@hash,$re);
+        if($re->{tags}->{frequency} =~m/common/i){
+          $index=$i;
+        }
+        $i++;
+  }
+  #we return the most frequence fragile site
+  if($i > 1){
+    return($hash[$index]);
+  }else{
+    return ($hash[0]);
+  }
 
-
-
-
-
+}
+#we filter the introns
+sub filter_introns_results{
+  my ($res, $db)=@_;
+  my $hash=();
+  foreach my $r (@$res){
+        my $re=@$db[$r->{index}];
+        #print Dumper($re);
+        push(@$hash,$re);
+  }
+  return $hash;
+}
+#we filter the exons from the same gene
+sub filter_exons_results{
+    my ($res, $db)=@_;
+    my $hash=();
+    foreach my $r (@$res){
+        my $re=@$db[$r->{index}];
+        #we store all the exons from the same gene
+        if(!defined $hash->{$re->{tags}->{gene_id}}){
+          $hash->{$re->{tags}->{gene_id}}=$re;
+        }elsif($re->{CDS} >=1 and $hash->{$re->{tags}->{gene_id}}->{CDS} == 0){
+          $hash->{$re->{tags}->{gene_id}}=$re;
+        }elsif($re->{UTR} >=1 and $hash->{$re->{tags}->{gene_id}}->{UTR} == 0){
+          $hash->{$re->{tags}->{gene_id}}=$re;
+        }
+    }
+    #print Dumper($hash);
+    my $f=();
+    foreach my $re (keys %{$hash}){
+        push (@$f,$hash->{$re});
+    }
+    return $f;
+}
 #my $t_genes=_build_interval_tree_bed($genes);
 
 
@@ -334,6 +468,7 @@ sub load_mRNA_fusions{
 	my $index=0;
 	my $fbed=();
 	my $fusions=();
+  my $fhash=();
 	while(my $line=<FILE>){
 	    chomp $line;
             my @data=split /\t/,$line;
@@ -366,13 +501,17 @@ sub load_mRNA_fusions{
 		  $tmp_b2->{index}=$index;
 		  #$tmp_b2->{name}=join("__",$tmp->{gene1},$tmp->{gene2});
 		  $tmp_b2->{name}=$tmp->{gene2};
-
+      #we save a hash with gene1 and gene2 to make overlap by gene names rather than fusions
+      if(!defined $fhash->{join("__",$tmp->{gene1},$tmp->{gene2})}){
+          $fhash->{join("__",$tmp->{gene1},$tmp->{gene2})}=$index;
+      }
 		push(@$fusions, $tmp);
 		push(@$fbed,$tmp_b1);
 		push(@$fbed,$tmp_b2);
-	    $index++;
+	  $index++;
 	}
-	return ($fusions,$fbed);
+  #return the fusions, the bed and a hash with fhash
+	return ($fusions,$fbed,$fhash);
 }
 
 
@@ -733,6 +872,7 @@ sub build_introns{
             $tmp->{strand}=$g->{strand};
             $tmp->{number}=$n;
             $tmp->{name}=join("_",$g->{tags}->{gene_id},$n);
+            $tmp->{gene_name}=$g->{tags}->{gene_name};
             push(@{$introns},$tmp);
             $n++;
             #debug micro-introns
