@@ -32,21 +32,25 @@ my ($f_table,$fbed,$fhash)=load_mRNA_fusions($opts{r},$opts{s});
 my ($genes,$exons,$introns)=load_exons_genes($opts{a});
 my $t_exons=_build_interval_tree_bed($exons);
 my $t_introns=_build_interval_tree_bed($introns);
-my $t_fus=_build_interval_tree_bed($fbed);
+#my $t_fus=_build_interval_tree_bed($fbed);
 
 
 # we iterate the VCF file to generate the table
 open(VCF, $opts{b}) or die "cannot open VCF file\n";
 
-#print join("\t","TumorID","SV_ID","CHROM","POS",
-#                      "SVTYPE","PES",
-#                      "STRANDS","SVLEN",
-#                      "CHR2","END",
-#                      "SUPP","CALLERS",
-#                      "ENS_BRK1", "GN_BRK1", "GT_BRK1", "CDS_BRK1", "EXON_BRK1","CDS_BRK1_D100", "EXON_BRK1_D100",
-#                      "ENS_BRK2", "GN_BRK2", "GT_BRK1","CDS_BRK2", "EXON_BRK2","CDS_BRK2_D100", "EXON_BRK2_D100",
-#                      "HIT_GENE","HIT_CDS","HIT_EXON","HIT_CDS_D100","HIT_EXON_D100")."\n";
-
+print join("\t","TumorID","SV_ID","CHROM","POS","CIPOS",
+                      "SVTYPE","PES",
+                      "STRANDS","SVLEN",
+                      "CHR2","END","CIEND",
+                      "SUPP", "CALLERS",
+                      "E1.name","E1.CDS","E1.UTR","E1.chr","E1.start","E1.stop","E1.strand","E1.exon_number","E1.gene_id","E1.gene_name","E1.gene_type",
+                      "I1.chr","I1.start","I1.stop","I1.strand","I1.number","I1.gene_id","I1.gene_name",
+                      "F1.chr","F1.start","F1.stop","F1.name","F1.Inducer","F1.frequency",
+                      "E2.name","E2.CDS","E2.UTR","E2.chr","E2.start","E2.stop","E2.strand","E2.exon_number","E2.gene_id","E2.gene_name","E2.gene_type",
+                      "I2.chr","I2.start","I2.stop","I2.strand","I2.number","I2.gene_id","I2.gene_name",
+                      "F2.chr","F2.start","F2.stop","F2.name","F2.Inducer","F2.frequency",
+                      "GF.name","GF.confidence","GF.read_support","GF.breakpoint1","GF.breakpoint2","GF.closest_genomic_breakpoint1","GF.closest_genomic_breakpoint2","GF.coverage1","GF.coverage2","GF.type")."\n";
+#print join("\t",)
 
 while(my $line=<VCF>){
   next if($line=~m/^#/);
@@ -67,90 +71,34 @@ while(my $line=<VCF>){
   my $n_introns_b2=0;
   # we match the exons
   my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,1);
-
   # we match the introns
   my ($intron_o1,$intron_o2)=overlap_feats($item, $t_introns,1);
   #we match the fragile sites
   my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs,1);
-
   # we match the mRNA fusions
-  my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus,10000);
+  #my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus,10000);
 
 
-  #print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
-  #                      $item->{info}->{SVTYPE},$item->{info}->{PES},
-  #                      $item->{info}->{STRANDS},$item->{info}->{SVLEN},
-  #                      $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
-  #                      $item->{info}->{SUPP}, $item->{info}->{CALLERS})."\n\n\n";
-
-  #print "Exons\n\n";
-  #print Dumper($exon_o1);
-  my @re1=();
   if(scalar(@$exon_o1)>0){
       my ($fe1)=filter_exons_results($exon_o1,$exons);
-     foreach my $e1 (@{$fe1}){
-         push(@re1,$e1->{name},$e1->{CDS},$e1->{UTR},
-              $e1->{chr},$e1->{start},$e1->{stop},$e1->{strand},
-              $e1->{tags}->{exon_number},$e1->{tags}->{gene_id},$e1->{tags}->{gene_name},$e1->{tags}->{gene_type});
-              #we broke the exons
-              last;
-     }
      $n_exons_b1=scalar(@{$fe1});
-  }else{
-      @re1=("NA") x 11;
   }
-
-  my @re2=();
   if(scalar(@$exon_o2)>0){
       my ($fe2)=filter_exons_results($exon_o2,$exons);
-      foreach my $e1 (@{$fe2}){
-          push(@re2,$e1->{name},$e1->{CDS},$e1->{UTR},
-               $e1->{chr},$e1->{start},$e1->{stop},$e1->{strand},
-               $e1->{tags}->{exon_number},$e1->{tags}->{gene_id},$e1->{tags}->{gene_name},$e1->{tags}->{gene_type});
-               #we broke the exons
-               last;
-      }
       $n_exons_b2=scalar(@{$fe2});
-      #print Dumper($fe2);
-  }else{
-    @re2=("NA") x 11;
   }
-  #print join("\t",@re1)."\n";
-  #print join("\t",@re2)."\n";
 
-#filter_exons_results($exon_o2,$exons);
-
-  #print "Introns\n\n";
-  #print Dumper($intron_o1);
   if(scalar(@$exon_o1)==0){
           my ($i1)=filter_introns_results($intron_o1,$introns,$genes);
           #print Dumper($i1);
           $n_introns_b1= defined($i1) ? scalar(@$i1):0;
-          #print Dumper($i1);
-    #'chr' => 'chr19',
-   #'stop' => 11312138,
-   #'number' => 6,
-   #'name' => 'ENSG00000130167.13_6',
-   #'gene_id' => 'ENSG00000130167.13',
-   #'index' => 496,
-   #'start' => 11308063,
-   #'gene_name' => 'TSPAN16',
-   #'strand' => '+'
-          #my @tmp=();
-
-          #foreach my $i (@$i1){
-          #     push(@tmp,join(":",$i->{chr},$i->{start},$i->{stop},$i->{strand},$i->{number},$i->{gene_id},$i->{gene_name}));
-          #}
-
   }
+
   if(scalar(@$exon_o2)==0){
           my ($i2)=filter_introns_results($intron_o2,$introns,$genes);
-          #$n_introns_b2=scalar(@$i2);
           $n_introns_b2= defined($i2) ? scalar(@$i2):0;
-          #print Dumper($i2);
   }
 
-  #print "Fragile\n\n";
   my @fra_s1=();
   if(scalar(@{$fra_o1}) > 0){
         my ($fra1)=filter_fragile_results($fra_o1,$frs);
@@ -165,12 +113,205 @@ while(my $line=<VCF>){
   }else{
     @fra_s2=("NA") x 6;
   }
-  #print join("\t",@fra_s1,@fra_s2)."\n";
-  print join("\t",$opts{s},$item->{ID},$n_exons_b1,$n_exons_b2,$n_introns_b1,$n_introns_b2)."\n";
-  #print "Fusions\n\n";
-  #print Dumper($rna_o1);
-  #print Dumper($rna_o2);
+
+  # we print all combinations of exon1--exon2
+  if($n_exons_b1 > 0 && $n_exons_b2 > 0){
+    my ($fe1)=filter_exons_results($exon_o1,$exons);
+    my ($fe2)=filter_exons_results($exon_o2,$exons);
+    foreach my $e1 (@{$fe1}){
+      my $re1=print_exon($e1);
+      foreach my $e2 (@{$fe2}){
+          my $re2=print_exon($e2);
+          my $p_fus=check_fusion($e1->{tags}->{gene_name},$e2->{tags}->{gene_name},$fhash,$f_table);
+          print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                                $item->{info}->{SVTYPE},$item->{info}->{PES},
+                                $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                                $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                                $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                                @$re1,("NA") x 7,@fra_s1,
+                                @$re2,("NA") x 7,@fra_s2,
+                                @$p_fus)."\n";
+        }
+
+    }
+
+
+  }elsif($n_exons_b1 > 0 && $n_introns_b2 > 0){
+    #exon1 -- intron2
+    my ($fe1)=filter_exons_results($exon_o1,$exons);
+    my ($fi2)=filter_introns_results($intron_o2,$introns,$genes);
+    foreach my $e1 (@{$fe1}){
+      my $re1=print_exon($e1);
+      foreach my $i2 (@{$fi2}){
+          my $ri2=print_intron($i2);
+          my $p_fus=check_fusion($e1->{tags}->{gene_name},$i2->{gene_name},$fhash,$f_table);
+          print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                                $item->{info}->{SVTYPE},$item->{info}->{PES},
+                                $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                                $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                                $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                                @$re1,("NA") x 7,@fra_s1,
+                                ("NA") x 11,@$ri2,@fra_s2,
+                                @$p_fus)."\n";
+        }
+
+    }
+
+
+    #intron1 -- #exon2
+  }elsif($n_exons_b2 > 0 && $n_introns_b1 > 0){
+    #intron1 -- intron2
+    my ($fi1)=filter_introns_results($intron_o1,$introns,$genes);
+    my ($fe2)=filter_exons_results($exon_o2,$exons);
+    foreach my $i1 (@{$fi1}){
+      my $ri1=print_intron($i1);
+      foreach my $e2 (@{$fe2}){
+          my $re2=print_exon($e2);
+          my $p_fus=check_fusion($i1->{gene_name},$e2->{tags}->{gene_name},$fhash,$f_table);
+          print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                                $item->{info}->{SVTYPE},$item->{info}->{PES},
+                                $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                                $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                                $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                                ("NA") x 11,@$ri1,@fra_s1,
+                                @$re2,("NA") x 7,@fra_s2,
+                                @$p_fus)."\n";
+        }
+
+    }
+
+
+  }elsif($n_introns_b1 > 0 && $n_introns_b2 > 0){
+    my ($fi1)=filter_introns_results($intron_o1,$introns,$genes);
+    my ($fi2)=filter_introns_results($intron_o2,$introns,$genes);
+    foreach my $i1 (@{$fi1}){
+      my $ri1=print_intron($i1);
+      foreach my $i2 (@{$fi2}){
+        my $ri2=print_intron($i2);
+        my $p_fus=check_fusion($i1->{gene_name},$i2->{gene_name},$fhash,$f_table);
+        #we print the results
+        print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                              $item->{info}->{SVTYPE},$item->{info}->{PES},
+                              $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                              $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                              $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                              ("NA") x 11,@$ri1,@fra_s1,
+                              ("NA") x 11,@$ri2,@fra_s2,
+                              @$p_fus)."\n";
+      }
+   }
+  }elsif($n_exons_b1 > 0){
+    my ($fe1)=filter_exons_results($exon_o1,$exons);
+    foreach my $e1 (@{$fe1}){
+      my $re1=print_exon($e1);
+      print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                      $item->{info}->{SVTYPE},$item->{info}->{PES},
+                      $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                      $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                      $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                      @$re1,("NA") x 7,@fra_s1,
+                      ("NA") x 11,("NA") x 7,@fra_s2,
+                      ("NA") x 10)."\n";
+    }
+
+
+  }elsif($n_exons_b2 > 0){
+    my ($fe2)=filter_exons_results($exon_o2,$exons);
+  foreach my $e2 (@{$fe2}){
+      my $re2=print_exon($e2);
+      print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                      $item->{info}->{SVTYPE},$item->{info}->{PES},
+                      $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                      $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                      $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                      ("NA") x 11,("NA") x 7,@fra_s1,
+                      @$re2,("NA") x 7,@fra_s2,
+                      ("NA") x 10)."\n";
+  }
+
+  }elsif($n_introns_b1 > 0){
+    my ($fi1)=filter_introns_results($intron_o1,$introns,$genes);
+    foreach my $i1 (@{$fi1}){
+      my $ri1=print_intron($i1);
+        #we print the results
+        print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                              $item->{info}->{SVTYPE},$item->{info}->{PES},
+                              $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                              $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                              $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                              ("NA") x 11,@$ri1,@fra_s1,
+                              ("NA") x 11,("NA") x 7,@fra_s2,
+                              ("NA") x 10)."\n";
+   }
+
+
+
+  }elsif($n_introns_b2 > 0){
+    my ($fi2)=filter_introns_results($intron_o2,$introns,$genes);
+      foreach my $i2 (@{$fi2}){
+        my $ri2=print_intron($i2);
+        print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                              $item->{info}->{SVTYPE},$item->{info}->{PES},
+                              $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                              $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                              $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                              ("NA") x 11,("NA") x 7,@fra_s1,
+                              ("NA") x 11,@$ri2,@fra_s2,
+                              ("NA") x 10)."\n";
+    }
+  }else{
+    print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
+                    $item->{info}->{SVTYPE},$item->{info}->{PES},
+                    $item->{info}->{STRANDS},$item->{info}->{SVLEN},
+                    $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
+                    $item->{info}->{SUPP}, $item->{info}->{CALLERS},
+                    ("NA") x 11,("NA") x 7,@fra_s1,
+                    ("NA") x 11,("NA") x 7,@fra_s2,
+                    ("NA") x 10)."\n";
+  }
+
+  #print join("\t",$opts{s},$item->{ID},$n_exons_b1,$n_exons_b2,$n_introns_b1,$n_introns_b2)."\n";
+
 }
+
+sub print_intron{
+  my ($i)=@_;
+  my $re1=();
+  push(@$re1,$i->{chr},$i->{start},$i->{stop},$i->{strand},$i->{number},$i->{gene_id},$i->{gene_name});
+  return $re1;
+}
+
+sub check_fusion{
+  my ($g1,$g2,$fhash,$f_table)=@_;
+  my $f_index=-1;
+  if(defined $fhash->{join("__",$g1,$g2)}){
+      $f_index=$fhash->{join("__",$g1,$g2)};
+  }elsif(defined $fhash->{join("__",$g2,$g1)}){
+      $f_index=$fhash->{join("__",$g2,$g1)};
+  }
+
+  my $p_fus=();
+  if($f_index >=0){
+    my $f=@$f_table[$f_index];
+    push(@$p_fus,$f->{name},$f->{confidence},$f->{read_support},$f->{breakpoint1},$f->{breakpoint2},
+                ,$f->{closest_genomic_breakpoint1},$f->{closest_genomic_breakpoint2},$f->{coverage1},
+                $f->{coverage2},$f->{type});
+  }else{
+    @$p_fus=("NA") x 10;
+  }
+  return $p_fus;
+}
+
+
+sub print_exon{
+  my ($e)=@_;
+  my $re1=();
+  push(@$re1,$e->{name},$e->{CDS},$e->{UTR},
+       $e->{chr},$e->{start},$e->{stop},$e->{strand},
+       $e->{tags}->{exon_number},$e->{tags}->{gene_id},$e->{tags}->{gene_name},$e->{tags}->{gene_type});
+   return $re1;
+}
+
 
 sub filter_fragile_results{
   my ($res, $db)=@_;
@@ -227,234 +368,7 @@ sub filter_exons_results{
     }
     return $f;
 }
-#my $t_genes=_build_interval_tree_bed($genes);
 
-
-=bla
-foreach my $e (@{$fbed}[1 .. 6]){
-    my $results = $t_fus->fetch($e->{start},$e->{stop});
-    foreach my $r (@$results){
-        my $re=@$f_table[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{gene1},$re->{gene2},$re->{breakpoint1},$re->{breakpoint2},
-	$re->{read_support},$e->{start},$e->{stop})."\n"
-    }
-   print Dumper($results);
-}
-
-
-#check the exons interval tree
-foreach my $e (@{$exons}[10 .. 20]){
-    my $results = $t_exons->fetch($e->{start},$e->{stop});
-    #print Dumper($results);
-    foreach my $r (@$results){
-        my $re=@$exons[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{tags}->{gene_type},$e->{start},$e->{stop})."\n"
-    }
-    print "\n";
-}
-
-#check the introns interval tree
-foreach my $e (@{$introns}[10 .. 20]){
-    my $results = $t_introns->fetch($e->{start},$e->{stop});
-    #print Dumper($results);
-    foreach my $r (@$results){
-        my $re=@$introns[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{gene_id},$e->{start},$e->{stop})."\n"
-    }
-    print "\n";
-}
-=cut
-#we load other databases
-
-                            #this get the breakpoints considering the CIPOS and CIEND post for SVs
-                            #my ($b1,$b2)=_get_breakpoints($item);
-
-
-
-#exit 0;
-=bla
-my $utrs=load_type($opts{a},"UTR");
-my $t_utr=_build_interval_tree_bed($utrs);
-print Dumper($utrs);
-#load annotation data and store it in the interval tree
-my $cds=load_type($opts{a},"CDS");
-my $t_cds=_build_interval_tree_bed($cds);
-my $exons=load_type($opts{a},"exon");
-my $t_exon=_build_interval_tree_bed($exons);
-my $genes=load_type($opts{a},"gene");
-my $t_gene=_build_interval_tree_bed($genes);
-
-
-
-=bla
-foreach my $e (@{$cds}[10 .. 20]){
-    my $results = $t_cds->fetch($e->{start},$e->{stop});
-    #print Dumper($results);
-    foreach my $r (@$results){
-        my $re=@$cds[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{tags}->{gene_type},$e->{start},$e->{stop})."\n"
-    }
-    print "\n";
-}
-#=cut
-#we load the VCF file and match the data
-#we can load a list or a single file
-open(VCF, $opts{b}) or die "cannot open VCF file\n";
-
-print join("\t","TumorID","SV_ID","CHROM","POS",
-                      "SVTYPE","PES",
-                      "STRANDS","SVLEN",
-                      "CHR2","END",
-                      "SUPP","CALLERS",
-                      "ENS_BRK1", "GN_BRK1", "GT_BRK1", "CDS_BRK1", "EXON_BRK1","CDS_BRK1_D100", "EXON_BRK1_D100",
-                      "ENS_BRK2", "GN_BRK2", "GT_BRK1","CDS_BRK2", "EXON_BRK2","CDS_BRK2_D100", "EXON_BRK2_D100",
-                      "HIT_GENE","HIT_CDS","HIT_EXON","HIT_CDS_D100","HIT_EXON_D100")."\n";
-
-while(my $line=<VCF>){
-
-      next if($line=~m/^#/);
-      chomp $line;
-      my $item=();
-      $item->{el}=$line;
-      ($item)=_create_entry($item);
-      my $type=$item->{info}->{SVTYPE};
-      #SURVIVOR pon
-      if($type eq "TRA" or $type eq "BND"){
-        $item->{info}->{POS2}=$item->{info}->{END};
-        #print Dumper($item);
-      }
-      #this get the breakpoints considering the CIPOS and CIEND post for SVs
-      #my ($b1,$b2)=_get_breakpoints($item);
-      #delta = 1 for CDS and exons
-      my ($cdso1,$cdso2)=overlap_feats($item, $t_cds,1);
-      my ($eo1,$eo2)=overlap_feats($item, $t_exon,1);
-      #delta = 100
-      my ($cdso1_100,$cdso2_100)=overlap_feats($item, $t_cds,100);
-      my ($eo1_100,$eo2_100)=overlap_feats($item, $t_exon,100);
-      # delta = 1 for genes
-      my ($go1,$go2)=overlap_feats($item, $t_gene,1);
-
-      #we parse the results
-      #my $coding=0;
-      #my $gene=0;
-      #print Dumper($eo1,$eo2);
-      #print Dumper($eo1_100,$eo2_100);
-      #print Dumper($go1,$go2);
-      #ENS_BRK1 GN_BRK1 CDS_BRK1 EXON_BRK1 CDS_BRK1_D100 EXON_BRK1_D100 ENS_BRK2 GN_BRK2 CDS_BRK2 EXON_BRK2 CDS_BRK2_D100 EXON_BRK2_D100
-      my @v1=();
-      my @v2=();
-      my $h_cds=0;
-      my $h_g=0;
-      my $h_e=0;
-      my $h_cds_100=0;
-      my $h_e_100=0;
-
-      #we check the variables to complete the table
-      if(scalar(@$go1) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($go1,$genes);
-          push(@v1,join(";",keys %{$hash->{IDS}}),join(";",keys %{$hash->{GN}}),join(";",keys %{$hash->{GT}}));
-          $h_g=1;
-      }else{
-        push(@v1,"NA","NA","NA");
-      }
-
-      if(scalar(@$go2) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($go2,$genes);
-          push(@v2,join(";",keys %{$hash->{IDS}}),join(";",keys %{$hash->{GN}}),join(";",keys %{$hash->{GT}}));
-          #push(@v2,join(";",keys %$hash->{IDS}),join(";",keys %$hash->{GN}),join(";",keys %$hash->{GT}));
-          $h_g=1;
-      }else{
-        push(@v2,"NA","NA","NA");
-      }
-
-      #CDSs
-      if(scalar(@$cdso1) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($cdso1,$cds);
-          push(@v1,join(";",keys %{$hash->{IDS}}));
-          $h_cds=1;
-      }else{
-        push(@v1,"NA");
-      }
-
-      if(scalar(@$cdso2) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($cdso2,$cds);
-          push(@v2,join(";",keys %{$hash->{IDS}}));
-          $h_cds=1;
-      }else{
-        push(@v2,"NA");
-      }
-
-      #Exons
-      if(scalar(@$eo1) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($eo1,$exons);
-          push(@v1,join(";",keys %{$hash->{IDS}}));
-          $h_e=1;
-      }else{
-        push(@v1,"NA");
-      }
-
-      if(scalar(@$eo2) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($eo2,$exons);
-          push(@v2,join(";",keys %{$hash->{IDS}}));
-          $h_e=1;
-      }else{
-        push(@v2,"NA");
-      }
-
-
-      #CDSs
-      if(scalar(@$cdso1_100) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($cdso1_100,$cds);
-          push(@v1,join(";",keys %{$hash->{IDS}}));
-          $h_cds_100=1;
-      }else{
-        push(@v1,"NA");
-      }
-
-      if(scalar(@$cdso2_100) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($cdso2_100,$cds);
-          push(@v2,join(";",keys %{$hash->{IDS}}));
-          $h_cds_100=1;
-      }else{
-        push(@v2,"NA");
-      }
-
-      #Exons 100
-      if(scalar(@$eo1_100) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($eo1_100,$exons);
-          push(@v1,join(";",keys %{$hash->{IDS}}));
-          $h_e_100=1;
-      }else{
-        push(@v1,"NA");
-      }
-
-      if(scalar(@$eo2_100) > 0){
-          #print Dumper($go1);
-          my $hash=get_results($eo2_100,$exons);
-          push(@v2,join(";",keys %{$hash->{IDS}}));
-          $h_e_100=1;
-      }else{
-        push(@v2,"NA");
-      }
-
-        print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},
-                              $item->{info}->{SVTYPE},$item->{info}->{PES},
-                              $item->{info}->{STRANDS},$item->{info}->{SVLEN},
-                              $item->{info}->{CHR2},$item->{info}->{END},
-                              $item->{info}->{SUPP}, $item->{info}->{CALLERS},@v1,@v2,$h_g,$h_cds,$h_e,$h_cds_100,$h_e_100)."\n";
-
-      #print Dumper($item);
-}
-=cut
 
 #We load the fusions from arriba and
 sub load_mRNA_fusions{
@@ -531,6 +445,9 @@ sub load_fragile_sites{
         $tmp->{tags}->{$v}=$v2;
       }
       $tmp->{name}=$tmp->{tags}->{name};
+      if(!defined $tmp->{tags}->{Inducer}){
+        $tmp->{tags}->{Inducer}="NA";
+      }
       $tmp->{index}=$i;
       if($tmp->{chr} eq "chrx"){
         $tmp->{chr}="chrX";
@@ -544,8 +461,6 @@ sub load_fragile_sites{
       #}
       push(@{$frs},$tmp);
     }
-    #print Dumper($tmp);
-    #print Dumper($frs);
     return ($frs);
 }
 
@@ -691,34 +606,6 @@ sub _get_breakpoints{
 }
 
 
-
-
-
-#print Dumper($t_exon);
-#$t_exon->print();
-=bla
-foreach my $e (@{$exons}[10 .. 20]){
-    #$t_exon->
-    my $results = $t_exon->fetch($e->{start},$e->{stop});
-    #print Dumper($results);
-    foreach my $r (@$results){
-        my $re=@$exons[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{tags}->{gene_type},$e->{start},$e->{stop})."\n"
-    }
-    print "\n";
-}
-print "GENES\n";
-foreach my $e (@{$genes}[10 .. 20]){
-    #$t_exon->
-    my $results = $t_gene->fetch($e->{start},$e->{stop});
-    #print Dumper($results);
-    foreach my $r (@$results){
-        my $re=@$genes[$r->{index}];
-        print join("\t",$r->{name},$r->{index},$r->{chr},$re->{name},$re->{start},$re->{stop},$re->{tags}->{gene_type},$e->{start},$e->{stop})."\n"
-    }
-    print "\n";
-}
-=cut
 #load the exons from the GTF files marking whether an exon is CDS, UTR and its associated gene
 sub load_exons_genes{
     my ($file,$type)=@_;
