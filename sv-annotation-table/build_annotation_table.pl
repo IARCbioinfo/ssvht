@@ -43,10 +43,12 @@ print join("\t","TumorID","SV_ID","CHROM","POS","CIPOS",
                       "STRANDS","SVLEN",
                       "CHR2","END","CIEND",
                       "SUPP", "CALLERS",
-                      "E1.name","E1.CDS","E1.UTR","E1.chr","E1.start","E1.stop","E1.strand","E1.exon_number","E1.gene_id","E1.gene_name","E1.gene_type",
+                      "E1.W","E1.name","E1.CDS","B1.CDS","B1.W.CDS","E1.UTR","B1.UTR","B1.W.UTR",
+                      "E1.chr","E1.start","E1.stop","E1.strand","E1.exon_number","E1.gene_id","E1.gene_name","E1.gene_type",
                       "I1.chr","I1.start","I1.stop","I1.strand","I1.number","I1.gene_id","I1.gene_name",
                       "F1.chr","F1.start","F1.stop","F1.name","F1.Inducer","F1.frequency",
-                      "E2.name","E2.CDS","E2.UTR","E2.chr","E2.start","E2.stop","E2.strand","E2.exon_number","E2.gene_id","E2.gene_name","E2.gene_type",
+                      "E2.W","E2.name","E2.CDS","B2.CDS","B2.W.CDS","E2.UTR","B2.UTR","B2.W.UTR",
+                      "E2.chr","E2.start","E2.stop","E2.strand","E2.exon_number","E2.gene_id","E2.gene_name","E2.gene_type",
                       "I2.chr","I2.start","I2.stop","I2.strand","I2.number","I2.gene_id","I2.gene_name",
                       "F2.chr","F2.start","F2.stop","F2.name","F2.Inducer","F2.frequency",
                       "GF.name","GF.confidence","GF.read_support","GF.breakpoint1","GF.breakpoint2","GF.closest_genomic_breakpoint1","GF.closest_genomic_breakpoint2","GF.coverage1","GF.coverage2","GF.type")."\n";
@@ -70,23 +72,58 @@ while(my $line=<VCF>){
   my $n_introns_b1=0;
   my $n_introns_b2=0;
   # we match the exons
-  my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,1);
-  # we match the introns
-  my ($intron_o1,$intron_o2)=overlap_feats($item, $t_introns,1);
+  my ($exon_o1,$exon_o2)=overlap_feats($item, $t_exons,0,0); #overlap without considering the CIPOS and CIEND
+  my ($exon_ow1,$exon_ow2)=overlap_feats($item, $t_exons,1,0); #overlap considering the CIPOS and CIEND for exons
+  # we match the introns and fragile sites using windows
+  my ($intron_o1,$intron_o2)=overlap_feats($item, $t_introns,1,0);
   #we match the fragile sites
-  my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs,1);
+  my ($fra_o1,$fra_o2)=overlap_feats($item,$t_frs,1,0);
   # we match the mRNA fusions
   #my ($rna_o1,$rna_o2)=overlap_feats($item,$t_fus,10000);
 
-
+  my $e1_window=0;
+  my $e2_window=0;
   if(scalar(@$exon_o1)>0){
       my ($fe1)=filter_exons_results($exon_o1,$exons);
      $n_exons_b1=scalar(@{$fe1});
-  }
+     $e1_window=0;
+    # print Dumper($fe1);
+  }elsif(scalar(@$exon_ow1) > 0){
+      my ($fe1)=filter_exons_results($exon_ow1,$exons);
+      $n_exons_b1=scalar(@{$fe1});
+      $e1_window=1;
+      $exon_o1=$exon_ow1;
+
+  } #there is no match for breakpoint1
+
   if(scalar(@$exon_o2)>0){
       my ($fe2)=filter_exons_results($exon_o2,$exons);
       $n_exons_b2=scalar(@{$fe2});
+      $e2_window=0;
+      #print Dumper($fe2);
+  }elsif(scalar(@$exon_ow2) > 0){
+    my ($fe2)=filter_exons_results($exon_ow2,$exons);
+    $n_exons_b1=scalar(@{$fe2});
+    $e2_window=1;
+    $exon_o2=$exon_ow2;
   }
+
+=bla
+  if($e1_window){
+    print join(" ",scalar(@$exon_ow1),scalar(@$exon_o1))."\n";
+    print Dumper($exon_o1);
+    print Dumper($exon_ow1);
+    $exon_o1=$exon_ow1;
+  }
+
+  if($e2_window){
+      print join(" ",scalar(@$exon_ow2),scalar(@$exon_o2))."\n";
+    print Dumper($exon_o2);
+    print Dumper($exon_ow2);
+    #exit 0;
+    $exon_o2=$exon_ow2;
+  }
+=cut
 
   if(scalar(@$exon_o1)==0){
           my ($i1)=filter_introns_results($intron_o1,$introns,$genes);
@@ -116,20 +153,36 @@ while(my $line=<VCF>){
 
   # we print all combinations of exon1--exon2
   if($n_exons_b1 > 0 && $n_exons_b2 > 0){
-    my ($fe1)=filter_exons_results($exon_o1,$exons);
-    my ($fe2)=filter_exons_results($exon_o2,$exons);
+
+    my ($b1,undef)=_get_breakpoints($item,$e1_window);
+     if($e1_window == 0){
+       $b1->{stop}=$b1->{start};
+     }
+
+      my (undef,$b2)=_get_breakpoints($item,$e2_window);
+      if($e2_window == 0){
+        $b2->{stop}=$b2->{start};
+      }
+
+
+    # We call the filter
+    my ($fe1)=filter_exons_results($exon_o1,$exons,$b1->{start},$b1->{stop});
+    #we check the second breakpoint
+    my ($fe2)=filter_exons_results($exon_o2,$exons,$b2->{start},$b2->{stop});
     foreach my $e1 (@{$fe1}){
       my $re1=print_exon($e1);
+      #print Dumper($e1);
       foreach my $e2 (@{$fe2}){
           my $re2=print_exon($e2);
+          #print Dumper($e2);
           my $p_fus=check_fusion($e1->{tags}->{gene_name},$e2->{tags}->{gene_name},$fhash,$f_table);
           print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
                                 $item->{info}->{SVTYPE},$item->{info}->{PES},
                                 $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                                 $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                                 $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                                @$re1,("NA") x 7,@fra_s1,
-                                @$re2,("NA") x 7,@fra_s2,
+                                $e1_window,@$re1,("NA") x 7,@fra_s1,
+                                $e2_window,@$re2,("NA") x 7,@fra_s2,
                                 @$p_fus)."\n";
         }
 
@@ -138,7 +191,15 @@ while(my $line=<VCF>){
 
   }elsif($n_exons_b1 > 0 && $n_introns_b2 > 0){
     #exon1 -- intron2
-    my ($fe1)=filter_exons_results($exon_o1,$exons);
+    my ($b1,undef)=_get_breakpoints($item,$e1_window);
+     if($e1_window == 0){
+       $b1->{stop}=$b1->{start};
+     }
+
+    my ($fe1)=filter_exons_results($exon_o1,$exons,$b1->{start},$b1->{stop});
+
+
+
     my ($fi2)=filter_introns_results($intron_o2,$introns,$genes);
     foreach my $e1 (@{$fe1}){
       my $re1=print_exon($e1);
@@ -150,8 +211,8 @@ while(my $line=<VCF>){
                                 $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                                 $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                                 $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                                @$re1,("NA") x 7,@fra_s1,
-                                ("NA") x 11,@$ri2,@fra_s2,
+                                $e1_window,@$re1,("NA") x 7,@fra_s1,
+                                "NA",("NA") x 15,@$ri2,@fra_s2,
                                 @$p_fus)."\n";
         }
 
@@ -162,7 +223,15 @@ while(my $line=<VCF>){
   }elsif($n_exons_b2 > 0 && $n_introns_b1 > 0){
     #intron1 -- intron2
     my ($fi1)=filter_introns_results($intron_o1,$introns,$genes);
-    my ($fe2)=filter_exons_results($exon_o2,$exons);
+
+
+    my (undef,$b2)=_get_breakpoints($item,$e2_window);
+    if($e2_window == 0){
+      $b2->{stop}=$b2->{start};
+    }
+
+    my ($fe2)=filter_exons_results($exon_o2,$exons,$b2->{start},$b2->{stop});
+
     foreach my $i1 (@{$fi1}){
       my $ri1=print_intron($i1);
       foreach my $e2 (@{$fe2}){
@@ -173,8 +242,8 @@ while(my $line=<VCF>){
                                 $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                                 $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                                 $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                                ("NA") x 11,@$ri1,@fra_s1,
-                                @$re2,("NA") x 7,@fra_s2,
+                                "NA",("NA") x 15,@$ri1,@fra_s1,
+                                $e1_window,@$re2,("NA") x 7,@fra_s2,
                                 @$p_fus)."\n";
         }
 
@@ -195,13 +264,20 @@ while(my $line=<VCF>){
                               $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                               $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                               $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                              ("NA") x 11,@$ri1,@fra_s1,
-                              ("NA") x 11,@$ri2,@fra_s2,
+                              ("NA") x 16,@$ri1,@fra_s1,
+                              ("NA") x 16,@$ri2,@fra_s2,
                               @$p_fus)."\n";
       }
    }
   }elsif($n_exons_b1 > 0){
-    my ($fe1)=filter_exons_results($exon_o1,$exons);
+
+    my ($b1,undef)=_get_breakpoints($item,$e1_window);
+     if($e1_window == 0){
+       $b1->{stop}=$b1->{start};
+     }
+
+    my ($fe1)=filter_exons_results($exon_o1,$exons,$b1->{start},$b1->{stop});
+
     foreach my $e1 (@{$fe1}){
       my $re1=print_exon($e1);
       print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
@@ -209,14 +285,21 @@ while(my $line=<VCF>){
                       $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                       $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                       $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                      @$re1,("NA") x 7,@fra_s1,
-                      ("NA") x 11,("NA") x 7,@fra_s2,
+                      $e1_window,@$re1,("NA") x 7,@fra_s1,
+                      ("NA") x 16,("NA") x 7,@fra_s2,
                       ("NA") x 10)."\n";
     }
 
 
   }elsif($n_exons_b2 > 0){
-    my ($fe2)=filter_exons_results($exon_o2,$exons);
+
+    my (undef,$b2)=_get_breakpoints($item,$e2_window);
+    if($e2_window == 0){
+      $b2->{stop}=$b2->{start};
+    }
+
+    my ($fe2)=filter_exons_results($exon_o2,$exons,$b2->{start},$b2->{stop});
+
   foreach my $e2 (@{$fe2}){
       my $re2=print_exon($e2);
       print join("\t",$opts{s},$item->{ID},$item->{CHROM},$item->{POS},$item->{info}->{CIPOS},
@@ -224,8 +307,8 @@ while(my $line=<VCF>){
                       $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                       $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                       $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                      ("NA") x 11,("NA") x 7,@fra_s1,
-                      @$re2,("NA") x 7,@fra_s2,
+                      ("NA") x 16,("NA") x 7,@fra_s1,
+                      $e2_window,@$re2,("NA") x 7,@fra_s2,
                       ("NA") x 10)."\n";
   }
 
@@ -239,8 +322,8 @@ while(my $line=<VCF>){
                               $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                               $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                               $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                              ("NA") x 11,@$ri1,@fra_s1,
-                              ("NA") x 11,("NA") x 7,@fra_s2,
+                              ("NA") x 16,@$ri1,@fra_s1,
+                              ("NA") x 16,("NA") x 7,@fra_s2,
                               ("NA") x 10)."\n";
    }
 
@@ -255,8 +338,8 @@ while(my $line=<VCF>){
                               $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                               $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                               $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                              ("NA") x 11,("NA") x 7,@fra_s1,
-                              ("NA") x 11,@$ri2,@fra_s2,
+                              ("NA") x 16,("NA") x 7,@fra_s1,
+                              ("NA") x 16,@$ri2,@fra_s2,
                               ("NA") x 10)."\n";
     }
   }else{
@@ -265,8 +348,8 @@ while(my $line=<VCF>){
                     $item->{info}->{STRANDS},$item->{info}->{SVLEN},
                     $item->{info}->{CHR2},$item->{info}->{END},$item->{info}->{CIEND},
                     $item->{info}->{SUPP}, $item->{info}->{CALLERS},
-                    ("NA") x 11,("NA") x 7,@fra_s1,
-                    ("NA") x 11,("NA") x 7,@fra_s2,
+                    ("NA") x 16,("NA") x 7,@fra_s1,
+                    ("NA") x 16,("NA") x 7,@fra_s2,
                     ("NA") x 10)."\n";
   }
 
@@ -302,11 +385,12 @@ sub check_fusion{
   return $p_fus;
 }
 
-
+#we check the exon
 sub print_exon{
   my ($e)=@_;
   my $re1=();
-  push(@$re1,$e->{name},$e->{CDS},$e->{UTR},
+  #we include the new variables
+  push(@$re1,$e->{name},$e->{CDS},$e->{CDS_e},$e->{CDS_w},$e->{UTR},$e->{UTR_e},$e->{UTR_w},
        $e->{chr},$e->{start},$e->{stop},$e->{strand},
        $e->{tags}->{exon_number},$e->{tags}->{gene_id},$e->{tags}->{gene_name},$e->{tags}->{gene_type});
    return $re1;
@@ -348,7 +432,7 @@ sub filter_introns_results{
 }
 #we filter the exons from the same gene
 sub filter_exons_results{
-    my ($res, $db)=@_;
+    my ($res, $db,$pos1,$pos2)=@_;
     my $hash=();
     foreach my $r (@$res){
         my $re=@$db[$r->{index}];
@@ -363,9 +447,43 @@ sub filter_exons_results{
     }
     #print Dumper($hash);
     my $f=();
+    #We check if the SV match the CDS or the UTR of the exon using exact or windows
     foreach my $re (keys %{$hash}){
-        push (@$f,$hash->{$re});
+      my $e=$hash->{$re};
+      #we add the flags for
+      $e->{CDS_e}=0;
+      $e->{CDS_w}=0;
+      $e->{UTR_e}=0;
+      $e->{UTR_w}=0;
+      #if the exon have CDSs
+      if( $e->{CDS} > 0 ){
+        if(($pos1 >=$e->{CDS_start} and $pos1 <= $e->{CDS_stop}) or ($pos2 >=$e->{CDS_start} and $pos2 <= $e->{CDS_stop})){
+              if($pos1==$pos2){
+                $e->{CDS_e}=1;
+              }else{
+                $e->{CDS_w}=1;
+              }
+        }
+      }
+      #we match the UTRs using $pos1 and $pos2
+      if ($e->{UTR} > 0){
+          # we might have 5' and 3' UTR for some genes
+          foreach my $u (sort keys %{$e->{UTR_pos}}){
+              my ($utr_start,$utr_stop)=split("__",$u);
+              if(($pos1 >=$utr_start and $pos1 < $utr_stop) or ($pos2 >=$utr_start and $pos2 <= $utr_stop)){
+                    if($pos1==$pos2){
+                      $e->{UTR_e}=1;
+                    }else{
+                      $e->{UTR_w}=1;
+                    }
+              }
+
+          }
+      }
+      #we save the updated exon with the vars
+      push (@$f,$e);
     }
+    # We check if the SV match the CDS part of the exon
     return $f;
 }
 
@@ -484,16 +602,16 @@ sub get_results{
 
 
 
+
 sub overlap_feats{
-   my ($item, $db, $delta)=@_;
+   my ($item, $db,$w, $delta)=@_;
    # we build the breakpoints
-   my ($b1,$b2)=_get_breakpoints($item);
+   my ($b1,$b2)=_get_breakpoints($item,$w);
    #we add an additional delta def is 1
    my $rbk1=$db->fetch($b1->{start}-$delta,$b1->{stop}+$delta);
    my $rbk2=$db->fetch($b2->{start}-$delta,$b2->{stop}+$delta);
    #we filter results by chromosome
-  my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
-
+   my ($fr1,$fr2)=_filter_results_by_chr($item,$rbk1,$rbk2);
 }
 
 
@@ -577,7 +695,7 @@ sub _get_tags{
 
 #funtion that take into acount the type of variant to build the breakpoint of each SV
 sub _get_breakpoints{
-      my $item=shift;
+      my ($item,$w)=@_;
       #breakpoint1
       my ($b1s,$b1e)=split(",",$item->{info}->{CIPOS});
       $b1s++ if($b1s ==0);
@@ -590,6 +708,13 @@ sub _get_breakpoints{
       my $type=$item->{info}->{SVTYPE};
       my $brk1=();
       my $brk2=();
+      #we do not take into account the CIEND and CIPOS when w=0
+      if($w == 0){
+        $b1s=0;
+        $b1e=1;#one for having start < stop
+        $b2s=0;
+        $b2e=1;#one for having start < stop
+      }
       #breakpoint 1 boundaries
       $brk1->{start}=$item->{POS}-abs($b1s);
       $brk1->{stop}=$item->{POS}+abs($b1e);
@@ -602,6 +727,7 @@ sub _get_breakpoints{
         $brk2->{start}=$item->{info}->{POS2}-abs($b2s);
         $brk2->{stop}=$item->{info}->{POS2}+abs($b2e);
       }
+
       return ($brk1,$brk2);
 }
 
@@ -636,18 +762,28 @@ sub load_exons_genes{
               if(!defined $exons->{$e->{name}}){
                 $e->{CDS}=0;
                 $e->{UTR}=0;
+                #$e->{CDS_start}="NA";
+                #$e->{CDS_stop}="NA";
                 $exons->{$e->{name}}=$e;
 
               }
             }elsif($d[2] eq "CDS"){
               if(defined $exons->{$e->{name}}){
                 $exons->{$e->{name}}->{CDS}++;
+                #we store the CDS part of the exon, and is always just 1  coordinate
+                $exons->{$e->{name}}->{CDS_start}=$e->{start};
+                $exons->{$e->{name}}->{CDS_stop}=$e->{stop};
+                #we add the exon CDS
               }else{
                 print STDERR $e->{name}. "is not present on exon db\n";
               }
             }elsif($d[2] eq "UTR"){
               if(defined $exons->{$e->{name}}){
+                #UTR can me more than 1 because there are single exons genes with 5/3 prime UTRs, at the moment we just kept one
                 $exons->{$e->{name}}->{UTR}++;
+                #we save the UTRs intervals as keys start/stop
+                $exons->{$e->{name}}->{UTR_pos}->{join("__",$e->{start},$e->{stop})}++;
+
               }else{
                 print STDERR $e->{name}. "is not present on exon db\n";
               }
@@ -829,22 +965,21 @@ sub load_type{
 
 #build the intervaltree from a bedfile
 sub  _build_interval_tree_bed{
-my ($bed_file)=@_;
-#print Dumper($bed_file);
-#we create the interval tree for storing the break points of each SV
-my $tree = Set::IntervalTree->new;
-foreach my $e (@{$bed_file}){
-    if(abs($e->{start}-$e->{stop})==0){
+  my ($bed_file)=@_;
+  #we create the interval tree for storing the break points of each SV
+  my $tree = Set::IntervalTree->new;
+  foreach my $e (@{$bed_file}){
+      if(abs($e->{start}-$e->{stop})==0){
         #print STDERR  Dumper($e);
         print STDERR "start equall to stop\n";
         #$line." start equal to stop\n";
-      }else{
+        }else{
         #print join(" ",$e->{name},$e->{start},$e->{stop})."\n";
         $tree->insert({chr=>$e->{chr},name=>$e->{name},index=>$e->{index}},$e->{start},$e->{stop});
+        }
       }
- }
- #$tree->print();
- #print Dumper($tree);
+      #$tree->print();
+      #print Dumper($tree);
   return ($tree);
 }
 
