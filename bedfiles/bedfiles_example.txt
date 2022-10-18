@@ -1,0 +1,5 @@
+COSMIC_GENE	/path/ssvht/bedfiles/cosmic_gene_census.bed.gz
+CENTROMER	/path/ssvht/bedfiles/centromers.bed.gz
+CNV	/path/ssvht/bedfiles/SAMPLE01.cnv.bed.gz
+CONSERVATION	/path/bedfiles/conservation.100way.5kb.chromosomes.bed.gz
+EXON	/path/bedfiles/gencode.v33.exon_protein_coding.bed.gz
