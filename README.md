@@ -70,7 +70,7 @@ The same script can be used to build a matrix containing the set of predicted so
 
 ## STEP 3: Train and Predict Somatic SVs with the random forest models.
 
-The directory ***rcode*** provide the RScripts for training, evaluation and classification of the random forest models for each caller. The input are the matrices generated on STEP 2. 
+The directory ***rcode*** provide the R scripts for training and evaluation of the random forest models for each caller. The inputs are the matrices generated on STEP 2. 
 
 
 ## STEP 4: Build a consensus with the predicted somatic calls 
@@ -80,6 +80,6 @@ After classifying the tumor-only SVs into somatic and germline for each of the S
 
 # Final Note
 
-Some of the scripts migth contain hard-coded paths which need to be replacing to match your data.
+Some of the scripts might contain hard-coded paths which need to be replaced to match your data.
 
 
